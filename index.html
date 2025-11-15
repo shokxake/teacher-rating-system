@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Texnikum O'qituvchilar Reytingi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <header class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-indigo-600">O'qituvchilar Reytingi</h1>
+            <a href="admin.html" class="text-sm font-medium text-gray-500 hover:text-indigo-600 border border-gray-300 px-3 py-1 rounded-md transition duration-150">Admin Panel</a>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-6">📊 Jami Reyting Ko'rsatkichlari (100 ball)</h2>
+
+            <div id="loader" class="text-center py-20">
+                <p class="text-xl font-medium text-indigo-500">Ma'lumotlar yuklanmoqda...</p>
+            </div>
+
+            <div id="teachers-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </div>
+        </div>
+    </main>
+
+    <footer class="mt-10 border-t border-gray-200 py-4 text-center text-sm text-gray-500">
+        &copy; 2024 Texnikum Reyting Tizimi.
+    </footer>
+
+    <script>
+        // ----------------------------------------------------
+        // ** 1. Firebase Sozlamalari (O'zingiznikiga o'zgartiring!) **
+        // ----------------------------------------------------
+        const firebaseConfig = {
+            //!!! BU YERGA O'ZINGIZNING FIREBASE MA'LUMOTLARINGIZNI KIRITING
+            apiKey: "AIzaSyBoeZhwbVlnO7ua92G1MEbkgvR56wafczo", 
+            authDomain: "myrating-db64e.firebaseapp.com",
+            projectId: "myrating-db64e",
+            storageBucket: "myrating-db64e.appspot.com",
+            messagingSenderId: "544027915154",
+            appId: "1:544027915154:web:9ea438a621ea6f0832074b"
+        };
+        
+        // Firebase initialization qismi xato bo'lsa, try-catch ichida yozish yaxshi amaliyot
+        try {
+             firebase.initializeApp(firebaseConfig);
+        } catch (err) {
+            console.error("Firebase initilizationda xato: ", err);
+            document.getElementById('loader').innerHTML = '<p class="text-red-500 text-xl py-10">Firebase sozlamalarini tekshiring!</p>';
+            throw err;
+        }
+
+        const db = firebase.firestore();
+        const teachersRef = db.collection('teachers');
+
+        // ----------------------------------------------------
+        // ** 2. Yordamchi Funksiyalar **
+        // ----------------------------------------------------
+
+        // Balga qarab rangni aniqlash
+        function getScoreColor(score) {
+            if (score < 55) {
+                return { color: 'bg-red-500', label: 'Qoniqarsiz', chartColor: '#ef4444' }; // Qizil
+            } else if (score >= 75 && score <= 85) {
+                return { color: 'bg-yellow-500', label: 'Yaxshi', chartColor: '#f59e0b' }; // Sariq
+            } else if (score > 85) {
+                return { color: 'bg-green-500', label: 'A\'lo', chartColor: '#10b981' }; // Yashil
+            } else {
+                return { color: 'bg-indigo-500', label: "O'rtacha", chartColor: '#6366f1' }; // Boshqa (Ko'k)
+            }
+        }
+
+        // ----------------------------------------------------
+        // ** 3. Ma'lumotlarni Yuklash va Renderlash **
+        // ----------------------------------------------------
+
+        // O'qituvchilar ro'yxatini render qilish
+        async function renderTeachers() {
+            const listContainer = document.getElementById('teachers-list');
+            const loader = document.getElementById('loader');
+            listContainer.innerHTML = '';
+            loader.style.display = 'block';
+
+            try {
+                // Ma'lumotlarni ism bo'yicha tartiblash uchun
+                const snapshot = await teachersRef.orderBy('name').get();
+                const teachers = [];
+
+                // Ma'lumotlarni yig'ish va umumiy ballni hisoblash
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    let totalScore = 0;
+                    
+                    // Bal qismlarini jamlash
+                    if (data.scores) {
+                        // Object.values() ni ishlatish xavfsizroq va soddaroq
+                        totalScore = Object.values(data.scores).reduce((sum, score) => sum + score, 0);
+                    }
+
+                    // Umumiy ballni 100 dan oshirmaslik
+                    totalScore = Math.min(100, Math.max(0, totalScore));
+
+                    teachers.push({ id: doc.id, totalScore, ...data });
+                });
+
+                // Ball bo'yicha tartiblash (yuqoridan pastga)
+                teachers.sort((a, b) => b.totalScore - a.totalScore);
+
+                // Har bir o'qituvchi uchun kartochka yaratish
+                teachers.forEach((teacher, index) => {
+                    const scoreData = teacher.scores || {};
+                    const { color, label, chartColor } = getScoreColor(teacher.totalScore);
+                    const criteria = teacher.scoreCriteria || {}; // Kriteriyani olish
+                    
+                    const scoresList = Object.keys(criteria).map(key => {
+                        const maxScore = criteria[key];
+                        const currentScore = scoreData[key] || 0;
+                        // String ichida $ni to'g'ri ishlash uchun ` backtick ishlatildi
+                        return `<li class="flex justify-between items-center text-sm text-gray-600 py-1">
+                                    <span>${key}:</span>
+                                    <span class="font-semibold">${currentScore} / ${maxScore} ball</span>
+                                </li>`;
+                    }).join('');
+
+
+                    const cardHTML = `
+                        <div class="bg-white shadow-xl rounded-lg overflow-hidden border ${index === 0 ? 'border-green-600 ring-4 ring-green-200' : 'border-gray-200'}">
+                            <div class="p-6">
+                                <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full ${color} text-white mb-4">${label}</span>
+                                <h3 class="text-2xl font-bold text-gray-900 mb-2">${index + 1}. ${teacher.name}</h3>
+                                <p class="text-lg font-medium text-indigo-600 mb-4">Jami Ball: <span class="text-4xl font-extrabold">${teacher.totalScore}</span> / 100</p>
+                                
+                                <div class="w-full h-1 bg-gray-200 rounded-full mb-4">
+                                    <div class="h-full rounded-full transition-all duration-700" style="width: ${teacher.totalScore}%; background-color: ${chartColor};"></div>
+                                </div>
+
+                                <div class="mt-4">
+                                    <h4 class="text-md font-semibold text-gray-700 mb-2 border-b pb-1">Ball Tafsilotlari:</h4>
+                                    <ul class="list-none space-y-1">
+                                        ${scoresList || '<li class="text-sm text-gray-500">Ball kriteriyalari belgilanmagan.</li>'}
+                                    </ul>
+                                </div>
+
+                                <div class="mt-6">
+                                    <h4 class="text-md font-semibold text-gray-700 mb-2 border-b pb-1">Natijalar Diagrammasi:</h4>
+                                    <div class="h-40 w-full">
+                                        <canvas id="chart-${teacher.id}"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    listContainer.insertAdjacentHTML('beforeend', cardHTML);
+
+                    // Diagrammani chizish
+                    // Chart.js uchun ID unique bo'lishi va DOMga qo'shilgandan keyin chaqirilishi kerak
+                    setTimeout(() => drawChart(teacher.id, teacher.totalScore, chartColor), 10); 
+                });
+
+            } catch (error) {
+                console.error("Ma'lumotlarni yuklashda xatolik:", error);
+                listContainer.innerHTML = '<p class="text-red-500 text-center text-xl py-10">Ma\'lumotlarni yuklashda yoki Firebasedan o\'qishda xatolik yuz berdi. Konsolni tekshiring.</p>';
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        // Diagrammani chizish funksiyasi (Chart.js 4+ ga moslashtirildi)
+        function drawChart(id, score, color) {
+            const ctx = document.getElementById(`chart-${id}`);
+            if (!ctx) return; 
+
+            new Chart(ctx, {
+                type: 'doughnut', 
+                data: {
+                    labels: ['Olingan Ball', 'Qolgan Ball'],
+                    datasets: [{
+                        data: [score, 100 - score],
+                        backgroundColor: [color, '#e5e7eb'], 
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.formattedValue + ' ball';
+                                }
+                            }
+                        }
+                    },
+                    cutout: '70%', 
+                    elements: {
+                        arc: { borderWidth: 0 }
+                    }
+                }
+            });
+        }
+
+
+        // Ilova ishga tushishi
+        document.addEventListener('DOMContentLoaded', renderTeachers);
+
+    </script>
+</body>
+</html>

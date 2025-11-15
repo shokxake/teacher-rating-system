@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - O'qituvchilar Reytingi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+</head>
+<body class="bg-gray-100">
+
+    <div id="app-container" class="hidden">
+        
+        <header class="bg-white shadow-md">
+            <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-red-600">🛡️ Admin Panel</h1>
+                <button id="logout-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-150">Chiqish</button>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div class="px-4 py-6 sm:px-0">
+                <h2 class="text-3xl font-extrabold text-gray-900 mb-6">O'qituvchi va Ballarni Boshqarish</h2>
+                
+                <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">➕ Yangi O'qituvchi Qo'shish</h3>
+                    <form id="add-teacher-form" class="space-y-4">
+                        <input type="text" id="teacher-name" placeholder="O'qituvchi Ismi" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        <textarea id="teacher-criteria" placeholder="Ball Kriteriyalari (JSON formatida). Masalan: { 'O\'quv Metodik': 10, 'Ilmiy Salohiyat': 30, 'Namunali Xulq': 60 }" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 h-24"></textarea>
+                        <button type="submit" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded transition duration-150">Qo'shish</button>
+                    </form>
+                </div>
+                
+                <div class="bg-white shadow-lg rounded-lg p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">📋 O'qituvchilar Ro'yxati</h3>
+                    <div id="teachers-table-container">
+                        <p id="teachers-loader" class="text-center text-gray-500">Yuklanmoqda...</p>
+                        <table class="min-w-full divide-y divide-gray-200 hidden" id="teachers-table">
+                            <thead>
+                                <tr>
+                                    <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ism</th>
+                                    <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jami Ball</th>
+                                    <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harakat</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teachers-table-body" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+    </div>
+
+    <div id="login-container" class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-2xl">
+            <div class="text-center">
+                <h2 class="mt-6 text-3xl font-extrabold text-gray-900">Admin Panelga Kirish</h2>
+                <p class="mt-2 text-sm text-gray-600">Kirish uchun admin ma'lumotlarini kiriting.</p>
+            </div>
+            <form id="login-form" class="mt-8 space-y-6">
+                <input type="email" id="login-email" required placeholder="Email" class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm">
+                <input type="password" id="login-password" required placeholder="Parol" class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm">
+                <button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Kirish</button>
+                <p id="login-error" class="text-red-500 text-center text-sm mt-2 hidden">Xato! Email yoki parol noto'g'ri.</p>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-modal" class="fixed z-10 inset-0 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Ballarni Tahrirlash</h3>
+                    <p class="text-sm text-gray-500">O'qituvchi: <span id="modal-teacher-name" class="font-semibold"></span></p>
+                    <div class="mt-4">
+                        <form id="edit-scores-form" class="space-y-4">
+                            <div id="score-fields"></div>
+                            
+                            <h4 class="text-md font-semibold text-red-600 mt-6 pt-4 border-t">Ball Qirqish Sababi (Shart emas, yozib qoldirish uchun)</h4>
+                            <textarea id="cut-reason" placeholder="Masalan: 'Ichki tartibni buzganligi uchun 5 bal qirqildi.'" class="w-full px-4 py-2 border border-gray-300 rounded-md h-16"></textarea>
+
+                            <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-150">Saqlash</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" id="close-modal-btn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Bekor qilish</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // ----------------------------------------------------
+        // ** 1. Firebase Sozlamalari (O'zingiznikiga o'zgartiring!) **
+        // ----------------------------------------------------
+        const firebaseConfig = {
+            //!!! BU YERGA O'ZINGIZNING FIREBASE MA'LUMOTLARINGIZNI KIRITING
+            apiKey: "AIzaSyBoeZhwbVlnO7ua92G1MEbkgvR56wafczo", 
+            authDomain: "myrating-db64e.firebaseapp.com",
+            projectId: "myrating-db64e",
+            storageBucket: "myrating-db64e.appspot.com",
+            messagingSenderId: "544027915154",
+            appId: "1:544027915154:web:9ea438a621ea6f0832074b"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const teachersRef = db.collection('teachers');
+
+        // DOM elementlari
+        const loginContainer = document.getElementById('login-container');
+        const appContainer = document.getElementById('app-container');
+        const loginForm = document.getElementById('login-form');
+        const addTeacherForm = document.getElementById('add-teacher-form');
+        const teachersTableBody = document.getElementById('teachers-table-body');
+        const teachersTable = document.getElementById('teachers-table');
+        const teachersLoader = document.getElementById('teachers-loader');
+        const logoutBtn = document.getElementById('logout-btn');
+        const loginError = document.getElementById('login-error');
+
+        const editModal = document.getElementById('edit-modal');
+        const editScoresForm = document.getElementById('edit-scores-form');
+        const scoreFields = document.getElementById('score-fields');
+        const modalTeacherName = document.getElementById('modal-teacher-name');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        
+        let currentTeacherId = null;
+
+        // ----------------------------------------------------
+        // ** 2. Authentication (Kirish/Chiqish) **
+        // ----------------------------------------------------
+
+        // Kirish
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            loginError.classList.add('hidden');
+
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (error) {
+                console.error("Kirishda xatolik:", error);
+                loginError.textContent = "Xato! Email yoki parol noto'g'ri. (" + error.message + ")";
+                loginError.classList.remove('hidden');
+            }
+        });
+
+        // Chiqish
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut();
+        });
+
+        // Autentifikatsiya holatini kuzatish
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Foydalanuvchi kirgan
+                loginContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                renderTeachersTable(); // O'qituvchilar ro'yxatini yuklash
+            } else {
+                // Foydalanuvchi kirmagan
+                appContainer.classList.add('hidden');
+                loginContainer.classList.remove('hidden');
+            }
+        });
+
+        // ----------------------------------------------------
+        // ** 3. CRUD Amallari (O'qituvchi/Ballar) **
+        // ----------------------------------------------------
+
+        // Yangi O'qituvchi Qo'shish
+        addTeacherForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('teacher-name').value;
+            const criteriaJson = document.getElementById('teacher-criteria').value;
+
+            try {
+                // JSON formatini tekshirish
+                const scoreCriteria = JSON.parse(criteriaJson);
+                
+                // Kriteriyalar ballari 100 dan oshmasligini tekshirish (ixtiyoriy)
+                const totalMaxScore = Object.values(scoreCriteria).reduce((sum, score) => sum + score, 0);
+                if (totalMaxScore !== 100) {
+                     alert("Ballar yig'indisi 100 ga teng bo'lishi kerak. Hozir: " + totalMaxScore);
+                     return;
+                }
+
+                await teachersRef.add({
+                    name: name,
+                    scoreCriteria: scoreCriteria, // { 'O\'quv Metodik': 10, ... }
+                    scores: {}, // Boshlang'ich ballar
+                    cutReasons: [] // Ball qirqish sabablari
+                });
+                
+                alert(`O'qituvchi "${name}" muvaffaqiyatli qo'shildi!`);
+                addTeacherForm.reset();
+            } catch (error) {
+                console.error("O'qituvchi qo'shishda xatolik:", error);
+                alert("Xatolik! Kriteriya JSON formati noto'g'ri yoki server xatosi: " + error.message);
+            }
+        });
+
+        // O'qituvchilar Ro'yxatini Renderlash
+        async function renderTeachersTable() {
+            teachersTableBody.innerHTML = '';
+            teachersTable.classList.add('hidden');
+            teachersLoader.classList.remove('hidden');
+
+            try {
+                const snapshot = await teachersRef.get();
+                teachersTable.classList.remove('hidden');
+                teachersLoader.classList.add('hidden');
+
+                snapshot.forEach(doc => {
+                    const teacher = doc.data();
+                    let totalScore = 0;
+                    if (teacher.scores) {
+                        Object.keys(teacher.scores).forEach(key => {
+                            totalScore += teacher.scores[key];
+                        });
+                    }
+                    totalScore = Math.min(100, Math.max(0, totalScore));
+
+                    const row = teachersTableBody.insertRow();
+                    row.className = 'hover:bg-gray-50';
+                    
+                    row.insertCell(0).textContent = teacher.name;
+                    row.insertCell(1).textContent = `${totalScore} / 100`;
+
+                    const actionsCell = row.insertCell(2);
+                    actionsCell.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2';
+                    
+                    // Tahrirlash tugmasi
+                    const editBtn = document.createElement('button');
+                    editBtn.textContent = 'Ballar';
+                    editBtn.className = 'text-indigo-600 hover:text-indigo-900 border border-indigo-500 py-1 px-3 rounded-md';
+                    editBtn.onclick = () => openEditModal(doc.id, teacher);
+                    actionsCell.appendChild(editBtn);
+
+                    // O'chirish tugmasi
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'O\'chirish';
+                    deleteBtn.className = 'text-red-600 hover:text-red-900 border border-red-500 py-1 px-3 rounded-md';
+                    deleteBtn.onclick = () => deleteTeacher(doc.id, teacher.name);
+                    actionsCell.appendChild(deleteBtn);
+                });
+
+            } catch (error) {
+                console.error("Jadvalni yuklashda xatolik:", error);
+                teachersLoader.textContent = "Ma'lumotlarni yuklashda xatolik yuz berdi.";
+            }
+        }
+
+        // O'qituvchini o'chirish
+        async function deleteTeacher(id, name) {
+            if (confirm(`Rostdan ham "${name}" o'qituvchini o'chirmoqchimisiz?`)) {
+                try {
+                    await teachersRef.doc(id).delete();
+                    alert(`O'qituvchi "${name}" muvaffaqiyatli o'chirildi.`);
+                    renderTeachersTable();
+                } catch (error) {
+                    console.error("O'chirishda xatolik:", error);
+                    alert("O'chirishda xatolik yuz berdi.");
+                }
+            }
+        }
+        
+        // ----------------------------------------------------
+        // ** 4. Ballarni Tahrirlash (Modal) **
+        // ----------------------------------------------------
+
+        // Modalni ochish va ma'lumotlarni yuklash
+        function openEditModal(id, teacher) {
+            currentTeacherId = id;
+            modalTeacherName.textContent = teacher.name;
+            scoreFields.innerHTML = '';
+            
+            const currentScores = teacher.scores || {};
+            const criteria = teacher.scoreCriteria || {};
+            
+            // Ball qismlarini yaratish
+            Object.keys(criteria).forEach(key => {
+                const maxScore = criteria[key];
+                const currentScore = currentScores[key] || 0;
+                
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'flex justify-between items-center';
+                fieldDiv.innerHTML = `
+                    <label for="score-${key}" class="text-gray-700">${key} (Max: ${maxScore} ball):</label>
+                    <input type="number" id="score-${key}" name="${key}" value="${currentScore}" min="0" max="${maxScore}" required 
+                           class="w-24 px-3 py-2 border border-gray-300 rounded-md text-right focus:ring-green-500 focus:border-green-500">
+                `;
+                scoreFields.appendChild(fieldDiv);
+            });
+            
+            // Agar sabablar bo'lsa, ko'rsatish
+            const cutReasonInput = document.getElementById('cut-reason');
+            cutReasonInput.value = '';
+
+            if (teacher.cutReasons && teacher.cutReasons.length > 0) {
+                 const lastReason = teacher.cutReasons[teacher.cutReasons.length - 1];
+                 cutReasonInput.placeholder = `Oldingi sabab: ${lastReason.reason} (${lastReason.date})`;
+            }
+
+
+            editModal.classList.remove('hidden');
+        }
+
+        // Modalni yopish
+        closeModalBtn.addEventListener('click', () => {
+            editModal.classList.add('hidden');
+            currentTeacherId = null;
+        });
+
+        // Ballarni saqlash
+        editScoresForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentTeacherId) return;
+
+            const newScores = {};
+            const inputs = scoreFields.querySelectorAll('input[type="number"]');
+            let totalScore = 0;
+            inputs.forEach(input => {
+                const score = parseInt(input.value);
+                newScores[input.name] = score;
+                totalScore += score;
+            });
+            
+            const cutReason = document.getElementById('cut-reason').value.trim();
+            const teacherRef = teachersRef.doc(currentTeacherId);
+
+            try {
+                 // Hozirgi ma'lumotlarni olish
+                 const doc = await teacherRef.get();
+                 const currentTeacher = doc.data();
+                 const newCutReasons = currentTeacher.cutReasons || [];
+
+                 // Ball qirqish sababini qo'shish (agar berilgan bo'lsa)
+                 if (cutReason !== "") {
+                     newCutReasons.push({
+                         reason: cutReason,
+                         date: new Date().toLocaleString('uz-UZ'),
+                         admin: auth.currentUser.email 
+                     });
+                 }
+
+
+                // Firestore'da ballarni yangilash
+                await teacherRef.update({
+                    scores: newScores,
+                    cutReasons: newCutReasons
+                });
+
+                alert(`O'qituvchi ballari muvaffaqiyatli yangilandi. Jami: ${totalScore}`);
+                editModal.classList.add('hidden');
+                renderTeachersTable(); // Jadvalni yangilash
+            } catch (error) {
+                console.error("Ballarni yangilashda xatolik:", error);
+                alert("Ballarni yangilashda xatolik yuz berdi: " + error.message);
+            }
+        });
+
+    </script>
+</body>
+</html>
