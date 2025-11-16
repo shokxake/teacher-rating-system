@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Reyting Diagrammasi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <header class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-purple-700">📊 Global Reyting Diagrammasi</h1>
+            <a href="index.html" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 px-3 py-1 rounded-md transition duration-150 border border-indigo-300">🏡 Asosiy Sahifa</a>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
+        <div class="bg-white p-8 shadow-xl rounded-lg">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">O'qituvchilarning Umumiy Ballari (100 balldan)</h2>
+
+            <div id="loader-chart" class="text-center py-20">
+                <p class="text-xl font-medium text-purple-500">Diagramma ma'lumotlari yuklanmoqda...</p>
+            </div>
+            
+            <div class="h-[500px] w-full relative" id="chart-container" style="display: none;">
+                <canvas id="teachersChart"></canvas>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // *** FIREBASE KONFIGURATSIYASI (Siz kiritgan ma'lumotlar) ***
+        const firebaseConfig = {
+            apiKey: "AIzaSyBoeZhwbVlnO7ua92G1MEbkgvR56wafczo", 
+            authDomain: "myrating-db64e.firebaseapp.com",
+            projectId: "myrating-db64e",
+            storageBucket: "myrating-db64e.appspot.com",
+            messagingSenderId: "544027915154",
+            appId: "1:544027915154:web:9ea438a621ea6f0832074b"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const teachersRef = db.collection('teachers');
+
+        // Ranglarni aniqlash funksiyasi
+        function getScoreStatus(score) {
+            if (score < 55) {
+                return { color: '#ef4444' }; // Qizil
+            } else if (score >= 85) {
+                return { color: '#10b981' }; // Yashil
+            } else {
+                return { color: '#f59e0b' }; // Sariq (To'q sariq)
+            }
+        }
+
+        async function drawGlobalChart() {
+            const loader = document.getElementById('loader-chart');
+            const chartContainer = document.getElementById('chart-container');
+            
+            try {
+                const snapshot = await teachersRef.get();
+                const teachers = [];
+                const labels = [];
+                const scores = [];
+                const colors = [];
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    let totalScore = 0;
+                    
+                    if (data.scores) {
+                        totalScore = Object.values(data.scores).reduce((sum, score) => sum + score, 0);
+                    }
+                    totalScore = Math.min(100, Math.max(0, totalScore));
+                    
+                    teachers.push({ totalScore, name: data.name });
+                });
+
+                // Ball bo'yicha tartiblash
+                teachers.sort((a, b) => b.totalScore - a.totalScore);
+
+                teachers.forEach(teacher => {
+                    labels.push(teacher.name);
+                    scores.push(teacher.totalScore);
+                    colors.push(getScoreStatus(teacher.totalScore).color);
+                });
+
+                loader.style.display = 'none';
+                chartContainer.style.display = 'block';
+
+
+                // Diagrammani chizish (Bar Chart)
+                new Chart(document.getElementById('teachersChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels, // O'qituvchilar nomlari
+                        datasets: [{
+                            label: 'Jami Ball (100 dan)',
+                            data: scores, // Ballar
+                            backgroundColor: colors, // Ranglar (Yashil, Sariq, Qizil)
+                            borderColor: colors.map(c => c.replace('500', '700')), // Chegarani quyuqroq qilish
+                            borderWidth: 1.5,
+                            borderRadius: 6 // Ustunlarni yumaloqlash
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'x', // Ustunlarni vertikal qilish
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100, // Maksimal 100 ball
+                                title: { display: true, text: 'Olingan Ball' }
+                            },
+                            x: {
+                                title: { display: true, text: 'O\'qituvchilar Nomi' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return 'Jami Ball: ' + context.formattedValue + ' / 100';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Global diagrammani yuklashda xatolik:", error);
+                loader.innerHTML = '<p class="text-red-500 text-center text-xl py-10">Diagramma ma\'lumotlarini yuklashda xatolik.</p>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', drawGlobalChart);
+    </script>
+</body>
+</html>

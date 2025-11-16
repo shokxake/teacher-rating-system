@@ -5,44 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Texnikum O'qituvchilar Reytingi</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-</head>
-<body class="bg-gray-50 text-gray-800">
+    
+    <style>
+        /* CSS: Ball Tafsilotlari qismini animatsiya bilan yashirish/ko'rsatish */
+        .details-container {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out;
+            padding-top: 0;
+            opacity: 0;
+        }
+        .details-container.active {
+            max-height: 500px;
+            transition: max-height 0.6s ease-in, opacity 0.6s ease-in;
+            opacity: 1;
+            padding-top: 0.75rem; /* pt-3 ga teng */
+        }
 
-    <header class="bg-white shadow-md">
+        /* CARD STYLE: Yumshoqroq soya va fon rangini yaxshilash */
+        .teacher-card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease-in-out;
+            background-color: #ffffff; /* Oq fon */
+        }
+        .teacher-card:hover {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+            transform: translateY(-3px);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <header class="bg-white shadow-lg sticky top-0 z-10">
         <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-indigo-600">O'qituvchilar Reytingi</h1>
-            <a href="admin.html" class="text-sm font-medium text-gray-500 hover:text-indigo-600 border border-gray-300 px-3 py-1 rounded-md transition duration-150">Admin Panel</a>
+            <h1 class="text-2xl font-extrabold text-indigo-800 tracking-wider">🌟 O'qituvchilar Reytingi</h1>
+            <nav class="flex space-x-4 items-center">
+                <a href="charts.html" class="text-sm font-semibold text-purple-700 hover:text-purple-900 px-4 py-2 rounded-full transition duration-200 bg-purple-100 hover:bg-purple-200 shadow-sm">📊 Global Diagramma</a>
+                <a href="admin.html" class="text-sm font-semibold text-gray-600 hover:text-gray-800 px-4 py-2 rounded-full transition duration-200 border border-gray-300">Admin Panel</a>
+            </nav>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <main class="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
         <div class="px-4 py-6 sm:px-0">
             
-            <h2 class="text-3xl font-extrabold text-gray-900 mb-6">📊 Jami Reyting Ko'rsatkichlari (100 ball)</h2>
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-10 text-center">⭐ Umumiy Reyting Jadvallari (100 ball)</h2>
 
             <div id="loader" class="text-center py-20">
-                <p class="text-xl font-medium text-indigo-500">Ma'lumotlar yuklanmoqda...</p>
+                <p class="text-2xl font-medium text-indigo-500 animate-pulse">Ma'lumotlar yuklanmoqda...</p>
             </div>
 
-            <div id="teachers-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div id="teachers-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
                 </div>
         </div>
     </main>
 
-    <footer class="mt-10 border-t border-gray-200 py-4 text-center text-sm text-gray-500">
-        &copy; 2024 Texnikum Reyting Tizimi.
-    </footer>
-
     <script>
-        // ----------------------------------------------------
-        // ** 1. Firebase Sozlamalari (O'zingiznikiga o'zgartiring!) **
-        // ----------------------------------------------------
+        // *** FIREBASE KONFIGURATSIYASI (Siz kiritgan ma'lumotlar) ***
         const firebaseConfig = {
-            //!!! BU YERGA O'ZINGIZNING FIREBASE MA'LUMOTLARINGIZNI KIRITING
             apiKey: "AIzaSyBoeZhwbVlnO7ua92G1MEbkgvR56wafczo", 
             authDomain: "myrating-db64e.firebaseapp.com",
             projectId: "myrating-db64e",
@@ -51,40 +74,36 @@
             appId: "1:544027915154:web:9ea438a621ea6f0832074b"
         };
         
-        // Firebase initialization qismi xato bo'lsa, try-catch ichida yozish yaxshi amaliyot
-        try {
-             firebase.initializeApp(firebaseConfig);
-        } catch (err) {
-            console.error("Firebase initilizationda xato: ", err);
-            document.getElementById('loader').innerHTML = '<p class="text-red-500 text-xl py-10">Firebase sozlamalarini tekshiring!</p>';
-            throw err;
-        }
-
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const teachersRef = db.collection('teachers');
 
-        // ----------------------------------------------------
-        // ** 2. Yordamchi Funksiyalar **
-        // ----------------------------------------------------
-
         // Balga qarab rangni aniqlash
-        function getScoreColor(score) {
+        function getScoreStatus(score) {
             if (score < 55) {
-                return { color: 'bg-red-500', label: 'Qoniqarsiz', chartColor: '#ef4444' }; // Qizil
-            } else if (score >= 75 && score <= 85) {
-                return { color: 'bg-yellow-500', label: 'Yaxshi', chartColor: '#f59e0b' }; // Sariq
-            } else if (score > 85) {
-                return { color: 'bg-green-500', label: 'A\'lo', chartColor: '#10b981' }; // Yashil
+                return { color: 'bg-red-500', label: 'Qoniqarsiz', statusColor: 'border-red-600', chartColor: '#ef4444' }; // Qizil
+            } else if (score >= 85) {
+                return { color: 'bg-green-500', label: "A'lo", statusColor: 'border-green-600', chartColor: '#10b981' }; // Yashil
             } else {
-                return { color: 'bg-indigo-500', label: "O'rtacha", chartColor: '#6366f1' }; // Boshqa (Ko'k)
+                return { color: 'bg-yellow-500', label: 'Yaxshi', statusColor: 'border-yellow-600', chartColor: '#f59e0b' }; // Sariq
             }
         }
 
-        // ----------------------------------------------------
-        // ** 3. Ma'lumotlarni Yuklash va Renderlash **
-        // ----------------------------------------------------
+        // Ball Tafsilotlarini ko'rsatish/yashirish funksiyasi
+        window.toggleDetails = function(teacherId) {
+            const details = document.getElementById(`details-${teacherId}`);
+            const button = document.getElementById(`btn-toggle-${teacherId}`);
+            
+            details.classList.toggle('active');
 
-        // O'qituvchilar ro'yxatini render qilish
+            if (details.classList.contains('active')) {
+                button.textContent = "👆 Tafsilotlarni yashirish";
+            } else {
+                button.textContent = "👇 Tafsilotlarni ko'rsatish";
+            }
+        };
+
+
         async function renderTeachers() {
             const listContainer = document.getElementById('teachers-list');
             const loader = document.getElementById('loader');
@@ -92,129 +111,84 @@
             loader.style.display = 'block';
 
             try {
-                // Ma'lumotlarni ism bo'yicha tartiblash uchun
-                const snapshot = await teachersRef.orderBy('name').get();
+                const snapshot = await teachersRef.get();
                 const teachers = [];
 
-                // Ma'lumotlarni yig'ish va umumiy ballni hisoblash
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     let totalScore = 0;
                     
-                    // Bal qismlarini jamlash
                     if (data.scores) {
-                        // Object.values() ni ishlatish xavfsizroq va soddaroq
                         totalScore = Object.values(data.scores).reduce((sum, score) => sum + score, 0);
                     }
-
-                    // Umumiy ballni 100 dan oshirmaslik
                     totalScore = Math.min(100, Math.max(0, totalScore));
 
                     teachers.push({ id: doc.id, totalScore, ...data });
                 });
 
-                // Ball bo'yicha tartiblash (yuqoridan pastga)
                 teachers.sort((a, b) => b.totalScore - a.totalScore);
 
-                // Har bir o'qituvchi uchun kartochka yaratish
                 teachers.forEach((teacher, index) => {
                     const scoreData = teacher.scores || {};
-                    const { color, label, chartColor } = getScoreColor(teacher.totalScore);
-                    const criteria = teacher.scoreCriteria || {}; // Kriteriyani olish
+                    const { color, label, statusColor, chartColor } = getScoreStatus(teacher.totalScore);
+                    const criteria = teacher.scoreCriteria || {};
                     
                     const scoresList = Object.keys(criteria).map(key => {
                         const maxScore = criteria[key];
                         const currentScore = scoreData[key] || 0;
-                        // String ichida $ni to'g'ri ishlash uchun ` backtick ishlatildi
                         return `<li class="flex justify-between items-center text-sm text-gray-600 py-1">
                                     <span>${key}:</span>
-                                    <span class="font-semibold">${currentScore} / ${maxScore} ball</span>
+                                    <span class="font-semibold text-gray-800">${currentScore} / ${maxScore} ball</span>
                                 </li>`;
                     }).join('');
 
-
+                    // Dizayn o'zgarishlari shu yerda
                     const cardHTML = `
-                        <div class="bg-white shadow-xl rounded-lg overflow-hidden border ${index === 0 ? 'border-green-600 ring-4 ring-green-200' : 'border-gray-200'}">
-                            <div class="p-6">
-                                <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full ${color} text-white mb-4">${label}</span>
-                                <h3 class="text-2xl font-bold text-gray-900 mb-2">${index + 1}. ${teacher.name}</h3>
-                                <p class="text-lg font-medium text-indigo-600 mb-4">Jami Ball: <span class="text-4xl font-extrabold">${teacher.totalScore}</span> / 100</p>
+                        <div class="teacher-card rounded-xl overflow-hidden border-t-4 border-r-2 ${statusColor} border-opacity-70">
+                            <div class="p-5">
+                                <div class="flex justify-between items-center mb-3">
+                                    <span class="inline-block px-3 py-1 text-xs font-bold rounded-full ${color} text-white shadow-md">${label}</span>
+                                    <span class="text-xl font-extrabold text-indigo-400">${index + 1}.</span>
+                                </div>
+
+                                <h3 class="text-xl font-bold text-gray-900 mb-2">${teacher.name}</h3>
                                 
-                                <div class="w-full h-1 bg-gray-200 rounded-full mb-4">
-                                    <div class="h-full rounded-full transition-all duration-700" style="width: ${teacher.totalScore}%; background-color: ${chartColor};"></div>
+                                <p class="text-lg font-medium text-gray-600 mb-1">Jami Ball:</p>
+                                <p class="text-4xl font-black text-indigo-700 mb-4">${teacher.totalScore} <span class="text-xl font-normal text-gray-500">/ 100</span></p>
+                                
+                                <div class="w-full h-2 bg-gray-200 rounded-full mb-5">
+                                    <div class="h-full rounded-full transition-all duration-700 shadow-md" style="width: ${teacher.totalScore}%; background-color: ${chartColor};"></div>
                                 </div>
-
-                                <div class="mt-4">
-                                    <h4 class="text-md font-semibold text-gray-700 mb-2 border-b pb-1">Ball Tafsilotlari:</h4>
-                                    <ul class="list-none space-y-1">
-                                        ${scoresList || '<li class="text-sm text-gray-500">Ball kriteriyalari belgilanmagan.</li>'}
-                                    </ul>
-                                </div>
-
-                                <div class="mt-6">
-                                    <h4 class="text-md font-semibold text-gray-700 mb-2 border-b pb-1">Natijalar Diagrammasi:</h4>
-                                    <div class="h-40 w-full">
-                                        <canvas id="chart-${teacher.id}"></canvas>
+                                
+                                <button id="btn-toggle-${teacher.id}" onclick="toggleDetails('${teacher.id}')" 
+                                    class="w-full text-sm font-semibold text-indigo-600 hover:text-indigo-800 py-1.5 rounded-lg transition duration-150 border border-indigo-200 hover:bg-indigo-50">
+                                    👇 Tafsilotlarni ko'rsatish
+                                </button>
+                                
+                                <div id="details-${teacher.id}" class="details-container">
+                                    <div class="pt-3 border-t border-gray-200 mt-2">
+                                        <h4 class="text-sm font-bold text-gray-700 mb-2">Ball Tafsilotlari:</h4>
+                                        <ul class="list-none space-y-1">
+                                            ${scoresList || '<li class="text-sm text-gray-500">Kriteriyalar mavjud emas.</li>'}
+                                        </ul>
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     `;
                     listContainer.insertAdjacentHTML('beforeend', cardHTML);
-
-                    // Diagrammani chizish
-                    // Chart.js uchun ID unique bo'lishi va DOMga qo'shilgandan keyin chaqirilishi kerak
-                    setTimeout(() => drawChart(teacher.id, teacher.totalScore, chartColor), 10); 
                 });
 
             } catch (error) {
                 console.error("Ma'lumotlarni yuklashda xatolik:", error);
-                listContainer.innerHTML = '<p class="text-red-500 text-center text-xl py-10">Ma\'lumotlarni yuklashda yoki Firebasedan o\'qishda xatolik yuz berdi. Konsolni tekshiring.</p>';
+                listContainer.innerHTML = '<p class="text-red-500 text-center text-xl py-10">Ma\'lumotlarni yuklashda xatolik yuz berdi.</p>';
             } finally {
                 loader.style.display = 'none';
             }
         }
 
-        // Diagrammani chizish funksiyasi (Chart.js 4+ ga moslashtirildi)
-        function drawChart(id, score, color) {
-            const ctx = document.getElementById(`chart-${id}`);
-            if (!ctx) return; 
-
-            new Chart(ctx, {
-                type: 'doughnut', 
-                data: {
-                    labels: ['Olingan Ball', 'Qolgan Ball'],
-                    datasets: [{
-                        data: [score, 100 - score],
-                        backgroundColor: [color, '#e5e7eb'], 
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.label + ': ' + context.formattedValue + ' ball';
-                                }
-                            }
-                        }
-                    },
-                    cutout: '70%', 
-                    elements: {
-                        arc: { borderWidth: 0 }
-                    }
-                }
-            });
-        }
-
-
-        // Ilova ishga tushishi
         document.addEventListener('DOMContentLoaded', renderTeachers);
-
     </script>
 </body>
 </html>
