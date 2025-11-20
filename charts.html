@@ -14,27 +14,26 @@
 
     <header class="bg-white shadow-md">
         <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-purple-700">📊 Global Reyting Diagrammasi</h1>
+            <h1 class="text-2xl font-bold text-purple-700">📊 Global Reyting Diagrammasi (Maks. 798 ball)</h1>
             <a href="index.html" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 px-3 py-1 rounded-md transition duration-150 border border-indigo-300">🏡 Asosiy Sahifa</a>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
         <div class="bg-white p-8 shadow-xl rounded-lg">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">O'qituvchilarning Umumiy Ballari (100 balldan)</h2>
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">O'qituvchilarning Umumiy Ballari (798 balldan)</h2>
 
             <div id="loader-chart" class="text-center py-20">
                 <p class="text-xl font-medium text-purple-500">Diagramma ma'lumotlari yuklanmoqda...</p>
             </div>
             
-            <div class="h-[500px] w-full relative" id="chart-container" style="display: none;">
+            <div class="w-full relative" id="chart-container" style="display: none;">
                 <canvas id="teachersChart"></canvas>
             </div>
         </div>
     </main>
 
     <script>
-        // *** FIREBASE KONFIGURATSIYASI (Siz kiritgan ma'lumotlar) ***
         const firebaseConfig = {
             apiKey: "AIzaSyBoeZhwbVlnO7ua92G1MEbkgvR56wafczo", 
             authDomain: "myrating-db64e.firebaseapp.com",
@@ -48,15 +47,21 @@
         const db = firebase.firestore();
         const teachersRef = db.collection('teachers');
 
-        // Ranglarni aniqlash funksiyasi
-        function getScoreStatus(score) {
-            if (score < 55) {
-                return { color: '#ef4444' }; // Qizil
-            } else if (score >= 85) {
-                return { color: '#10b981' }; // Yashil
+        const MAX_SCORE = 798;
+        
+        // Ranglarni foiz asosida aniqlash (56-85% oraliq)
+        function getScoreStatus(totalScore) {
+            const percentage = (totalScore / MAX_SCORE) * 100;
+            let chartColor;
+
+            if (percentage >= 86) {
+                chartColor = '#10b981'; // Yashil (A'lo)
+            } else if (percentage >= 56) {
+                chartColor = '#f59e0b'; // Sariq (Yaxshi)
             } else {
-                return { color: '#f59e0b' }; // Sariq (To'q sariq)
+                chartColor = '#ef4444'; // Qizil (Qoniqarsiz)
             }
+            return { chartColor };
         }
 
         async function drawGlobalChart() {
@@ -66,9 +71,6 @@
             try {
                 const snapshot = await teachersRef.get();
                 const teachers = [];
-                const labels = [];
-                const scores = [];
-                const colors = [];
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
@@ -77,49 +79,55 @@
                     if (data.scores) {
                         totalScore = Object.values(data.scores).reduce((sum, score) => sum + score, 0);
                     }
-                    totalScore = Math.min(100, Math.max(0, totalScore));
+
+                    // Jarima ballarini ayirish
+                    const penaltyAmount = data.penalty ? data.penalty.amount : 0; 
+                    const finalScore = totalScore - penaltyAmount;
                     
-                    teachers.push({ totalScore, name: data.name });
+                    const normalizedScore = Math.min(MAX_SCORE, Math.max(0, finalScore));
+                    
+                    teachers.push({ totalScore: normalizedScore, name: data.name });
                 });
 
-                // Ball bo'yicha tartiblash
                 teachers.sort((a, b) => b.totalScore - a.totalScore);
+                
+                const labels = teachers.map(t => t.name);
+                const scores = teachers.map(t => t.totalScore);
+                const colors = teachers.map(t => getScoreStatus(t.totalScore).chartColor);
 
-                teachers.forEach(teacher => {
-                    labels.push(teacher.name);
-                    scores.push(teacher.totalScore);
-                    colors.push(getScoreStatus(teacher.totalScore).color);
-                });
+                // Kontent ko'p bo'lsa, Canvas balandligini dinamik sozlash
+                const dynamicHeight = Math.max(500, teachers.length * 35 + 100); 
+                chartContainer.style.height = `${dynamicHeight}px`;
 
                 loader.style.display = 'none';
                 chartContainer.style.display = 'block';
 
-
-                // Diagrammani chizish (Bar Chart)
                 new Chart(document.getElementById('teachersChart'), {
                     type: 'bar',
                     data: {
-                        labels: labels, // O'qituvchilar nomlari
+                        labels: labels,
                         datasets: [{
-                            label: 'Jami Ball (100 dan)',
-                            data: scores, // Ballar
-                            backgroundColor: colors, // Ranglar (Yashil, Sariq, Qizil)
-                            borderColor: colors.map(c => c.replace('500', '700')), // Chegarani quyuqroq qilish
+                            label: `Jami Ball (${MAX_SCORE} dan)`,
+                            data: scores, 
+                            backgroundColor: colors, 
                             borderWidth: 1.5,
-                            borderRadius: 6 // Ustunlarni yumaloqlash
+                            borderRadius: 6
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        indexAxis: 'x', // Ustunlarni vertikal qilish
+                        indexAxis: 'y',
                         scales: {
-                            y: {
+                            x: { // Bu endi Ballarni ko'rsatadi
                                 beginAtZero: true,
-                                max: 100, // Maksimal 100 ball
-                                title: { display: true, text: 'Olingan Ball' }
+                                max: 800, // Maksimal ball 798 ga moslab 800 qo'yildi
+                                title: { display: true, text: 'Olingan Ball (798 gacha)' },
+                                ticks: {
+                                    stepSize: 100 
+                                }
                             },
-                            x: {
+                            y: { 
                                 title: { display: true, text: 'O\'qituvchilar Nomi' }
                             }
                         },
@@ -128,7 +136,9 @@
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
-                                        return 'Jami Ball: ' + context.formattedValue + ' / 100';
+                                        const score = context.formattedValue;
+                                        const percentage = ((score / MAX_SCORE) * 100).toFixed(1);
+                                        return `Jami Ball: ${score} / ${MAX_SCORE} (${percentage}%)`;
                                     }
                                 }
                             }

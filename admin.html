@@ -5,105 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - O'qituvchilar Reytingi</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <style>
+        .loading-overlay { display: none; }
+    </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-50 text-gray-800">
 
-    <div id="app-container" class="hidden">
-        
-        <header class="bg-white shadow-md">
-            <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-                <h1 class="text-2xl font-bold text-red-600">🛡️ Admin Panel</h1>
-                <button id="logout-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-150">Chiqish</button>
-            </div>
-        </header>
-
-        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <div class="px-4 py-6 sm:px-0">
-                <h2 class="text-3xl font-extrabold text-gray-900 mb-6">O'qituvchi va Ballarni Boshqarish</h2>
-                
-                <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">➕ Yangi O'qituvchi Qo'shish</h3>
-                    <form id="add-teacher-form" class="space-y-4">
-                        <input type="text" id="teacher-name" placeholder="O'qituvchi Ismi" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
-                        <textarea id="teacher-criteria" placeholder="Ball Kriteriyalari (JSON formatida). Masalan: { 'O\'quv Metodik': 10, 'Ilmiy Salohiyat': 30, 'Namunali Xulq': 60 }" required class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 h-24"></textarea>
-                        <button type="submit" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded transition duration-150">Qo'shish</button>
-                    </form>
-                </div>
-                
-                <div class="bg-white shadow-lg rounded-lg p-6">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">📋 O'qituvchilar Ro'yxati</h3>
-                    <div id="teachers-table-container">
-                        <p id="teachers-loader" class="text-center text-gray-500">Yuklanmoqda...</p>
-                        <table class="min-w-full divide-y divide-gray-200 hidden" id="teachers-table">
-                            <thead>
-                                <tr>
-                                    <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ism</th>
-                                    <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jami Ball</th>
-                                    <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harakat</th>
-                                </tr>
-                            </thead>
-                            <tbody id="teachers-table-body" class="bg-white divide-y divide-gray-200">
-                                </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div>
-        </main>
-
-    </div>
-
-    <div id="login-container" class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-2xl">
-            <div class="text-center">
-                <h2 class="mt-6 text-3xl font-extrabold text-gray-900">Admin Panelga Kirish</h2>
-                <p class="mt-2 text-sm text-gray-600">Kirish uchun admin ma'lumotlarini kiriting.</p>
-            </div>
-            <form id="login-form" class="mt-8 space-y-6">
-                <input type="email" id="login-email" required placeholder="Email" class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm">
-                <input type="password" id="login-password" required placeholder="Parol" class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm">
-                <button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Kirish</button>
-                <p id="login-error" class="text-red-500 text-center text-sm mt-2 hidden">Xato! Email yoki parol noto'g'ri.</p>
-            </form>
+    <header class="bg-white shadow-md sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-indigo-700">🔐 Admin Panel</h1>
+            <a href="index.html" class="text-sm font-medium text-purple-600 hover:text-purple-800 px-3 py-1 rounded-md transition duration-150 border border-purple-300">🏡 Asosiy Sahifa</a>
         </div>
-    </div>
+    </header>
 
-    <div id="edit-modal" class="fixed z-10 inset-0 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Ballarni Tahrirlash</h3>
-                    <p class="text-sm text-gray-500">O'qituvchi: <span id="modal-teacher-name" class="font-semibold"></span></p>
-                    <div class="mt-4">
-                        <form id="edit-scores-form" class="space-y-4">
-                            <div id="score-fields"></div>
-                            
-                            <h4 class="text-md font-semibold text-red-600 mt-6 pt-4 border-t">Ball Qirqish Sababi (Shart emas, yozib qoldirish uchun)</h4>
-                            <textarea id="cut-reason" placeholder="Masalan: 'Ichki tartibni buzganligi uchun 5 bal qirqildi.'" class="w-full px-4 py-2 border border-gray-300 rounded-md h-16"></textarea>
-
-                            <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-150">Saqlash</button>
-                        </form>
+    <main class="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            
+            <div class="bg-white shadow-xl rounded-lg p-6 mb-8">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 border-b pb-2">Ball Kriteriyalari Sozlamasi (Jami: 798 ball)</h2>
+                <p class="text-sm text-gray-600 mb-3">Kriteriyalarni JSON formatida kiriting. Kalitlar to'plangan ball nomi, qiymatlar esa shu kriteriya uchun Maksimal ball (798 dan oshmasligi kerak).</p>
+                <textarea id="criteria-input" rows="8" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 resize-y" placeholder='Masalan: {"O_quv Ishlari": 50, "Uslubiy ishlar": 220, ...}'></textarea>
+                <button onclick="saveCriteria()" class="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition duration-150">Kriteriyalarni Saqlash</button>
+            </div>
+            
+            <div class="bg-white shadow-xl rounded-lg p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 border-b pb-2">O'qituvchilar Ro'yxati</h2>
+                <button onclick="openEditModal(null)" class="mb-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-150">➕ Yangi O'qituvchi Qo'shish</button>
+                <div id="teachers-admin-list" class="space-y-4">
                     </div>
+            </div>
+            
+        </div>
+    </main>
+    
+    <div id="edit-modal" class="fixed inset-0 bg-gray-900 bg-opacity-70 z-30 hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6">
+            <h3 id="modal-title" class="text-2xl font-extrabold text-indigo-700 mb-4 border-b pb-2">O'qituvchi ma'lumotlarini tahrirlash</h3>
+            <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                
+                <input type="hidden" id="edit-teacher-id">
+                
+                <label class="block text-sm font-bold text-gray-700" for="edit-name">F.I.Sh</label>
+                <input type="text" id="edit-name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="O'qituvchi F.I.Sh">
+                
+                <h4 class="text-lg font-bold text-gray-800 mt-6 border-t pt-4">Ball Kriteriyalari Bo'yicha Ballar (798 gacha)</h4>
+                <div id="score-inputs" class="space-y-3">
+                    </div>
+
+                <div class="mt-6 p-4 rounded-lg border-2 border-red-300 bg-red-50">
+                    <h4 class="text-lg font-bold text-red-700 mb-3">❌ Jarima Ballari</h4>
+                    
+                    <label class="block text-sm font-bold text-red-700 mb-2" for="penalty-amount">
+                        Jarima Balli Miqdori (Minus Ball)
+                    </label>
+                    <input type="number" id="penalty-amount" class="w-full px-3 py-2 border border-red-300 rounded-md focus:ring-red-500 focus:border-red-500" placeholder="Masalan: 25 ball" value="0" min="0">
+                    
+                    <label class="block text-sm font-bold text-red-700 mt-4 mb-2" for="penalty-reason">
+                        Jarima Berish Sababi (Tafsilot uchun)
+                    </label>
+                    <textarea id="penalty-reason" class="w-full px-3 py-2 border border-red-300 rounded-md focus:ring-red-500 focus:border-red-500" rows="2" placeholder="Masalan: Mehnat intizomini buzish (darsga kechikish - 10 ball)"></textarea>
                 </div>
-                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="button" id="close-modal-btn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Bekor qilish</button>
                 </div>
+            
+            <div class="flex justify-end space-x-3 mt-6">
+                <button onclick="closeEditModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-md transition duration-150">Bekor qilish</button>
+                <button onclick="saveTeacher()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md transition duration-150">Saqlash</button>
             </div>
         </div>
     </div>
-
-
     <script>
-        // ----------------------------------------------------
-        // ** 1. Firebase Sozlamalari (O'zingiznikiga o'zgartiring!) **
-        // ----------------------------------------------------
         const firebaseConfig = {
-            //!!! BU YERGA O'ZINGIZNING FIREBASE MA'LUMOTLARINGIZNI KIRITING
             apiKey: "AIzaSyBoeZhwbVlnO7ua92G1MEbkgvR56wafczo", 
             authDomain: "myrating-db64e.firebaseapp.com",
             projectId: "myrating-db64e",
@@ -111,265 +84,195 @@
             messagingSenderId: "544027915154",
             appId: "1:544027915154:web:9ea438a621ea6f0832074b"
         };
+        
         firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
         const db = firebase.firestore();
         const teachersRef = db.collection('teachers');
+        const configRef = db.collection('config').doc('criteria');
 
-        // DOM elementlari
-        const loginContainer = document.getElementById('login-container');
-        const appContainer = document.getElementById('app-container');
-        const loginForm = document.getElementById('login-form');
-        const addTeacherForm = document.getElementById('add-teacher-form');
-        const teachersTableBody = document.getElementById('teachers-table-body');
-        const teachersTable = document.getElementById('teachers-table');
-        const teachersLoader = document.getElementById('teachers-loader');
-        const logoutBtn = document.getElementById('logout-btn');
-        const loginError = document.getElementById('login-error');
+        let currentCriteria = {};
 
-        const editModal = document.getElementById('edit-modal');
-        const editScoresForm = document.getElementById('edit-scores-form');
-        const scoreFields = document.getElementById('score-fields');
-        const modalTeacherName = document.getElementById('modal-teacher-name');
-        const closeModalBtn = document.getElementById('close-modal-btn');
-        
-        let currentTeacherId = null;
-
-        // ----------------------------------------------------
-        // ** 2. Authentication (Kirish/Chiqish) **
-        // ----------------------------------------------------
-
-        // Kirish
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            loginError.classList.add('hidden');
-
+        // 1. Kriteriyalarni yuklash va ko'rsatish
+        async function loadCriteria() {
             try {
-                await auth.signInWithEmailAndPassword(email, password);
-            } catch (error) {
-                console.error("Kirishda xatolik:", error);
-                loginError.textContent = "Xato! Email yoki parol noto'g'ri. (" + error.message + ")";
-                loginError.classList.remove('hidden');
-            }
-        });
-
-        // Chiqish
-        logoutBtn.addEventListener('click', () => {
-            auth.signOut();
-        });
-
-        // Autentifikatsiya holatini kuzatish
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                // Foydalanuvchi kirgan
-                loginContainer.classList.add('hidden');
-                appContainer.classList.remove('hidden');
-                renderTeachersTable(); // O'qituvchilar ro'yxatini yuklash
-            } else {
-                // Foydalanuvchi kirmagan
-                appContainer.classList.add('hidden');
-                loginContainer.classList.remove('hidden');
-            }
-        });
-
-        // ----------------------------------------------------
-        // ** 3. CRUD Amallari (O'qituvchi/Ballar) **
-        // ----------------------------------------------------
-
-        // Yangi O'qituvchi Qo'shish
-        addTeacherForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const name = document.getElementById('teacher-name').value;
-            const criteriaJson = document.getElementById('teacher-criteria').value;
-
-            try {
-                // JSON formatini tekshirish
-                const scoreCriteria = JSON.parse(criteriaJson);
-                
-                // Kriteriyalar ballari 100 dan oshmasligini tekshirish (ixtiyoriy)
-                const totalMaxScore = Object.values(scoreCriteria).reduce((sum, score) => sum + score, 0);
-                if (totalMaxScore !== 100) {
-                     alert("Ballar yig'indisi 100 ga teng bo'lishi kerak. Hozir: " + totalMaxScore);
-                     return;
+                const doc = await configRef.get();
+                if (doc.exists) {
+                    currentCriteria = doc.data().criteria || {};
+                    document.getElementById('criteria-input').value = JSON.stringify(currentCriteria, null, 2);
                 }
-
-                await teachersRef.add({
-                    name: name,
-                    scoreCriteria: scoreCriteria, // { 'O\'quv Metodik': 10, ... }
-                    scores: {}, // Boshlang'ich ballar
-                    cutReasons: [] // Ball qirqish sabablari
-                });
-                
-                alert(`O'qituvchi "${name}" muvaffaqiyatli qo'shildi!`);
-                addTeacherForm.reset();
             } catch (error) {
-                console.error("O'qituvchi qo'shishda xatolik:", error);
-                alert("Xatolik! Kriteriya JSON formati noto'g'ri yoki server xatosi: " + error.message);
-            }
-        });
-
-        // O'qituvchilar Ro'yxatini Renderlash
-        async function renderTeachersTable() {
-            teachersTableBody.innerHTML = '';
-            teachersTable.classList.add('hidden');
-            teachersLoader.classList.remove('hidden');
-
-            try {
-                const snapshot = await teachersRef.get();
-                teachersTable.classList.remove('hidden');
-                teachersLoader.classList.add('hidden');
-
-                snapshot.forEach(doc => {
-                    const teacher = doc.data();
-                    let totalScore = 0;
-                    if (teacher.scores) {
-                        Object.keys(teacher.scores).forEach(key => {
-                            totalScore += teacher.scores[key];
-                        });
-                    }
-                    totalScore = Math.min(100, Math.max(0, totalScore));
-
-                    const row = teachersTableBody.insertRow();
-                    row.className = 'hover:bg-gray-50';
-                    
-                    row.insertCell(0).textContent = teacher.name;
-                    row.insertCell(1).textContent = `${totalScore} / 100`;
-
-                    const actionsCell = row.insertCell(2);
-                    actionsCell.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2';
-                    
-                    // Tahrirlash tugmasi
-                    const editBtn = document.createElement('button');
-                    editBtn.textContent = 'Ballar';
-                    editBtn.className = 'text-indigo-600 hover:text-indigo-900 border border-indigo-500 py-1 px-3 rounded-md';
-                    editBtn.onclick = () => openEditModal(doc.id, teacher);
-                    actionsCell.appendChild(editBtn);
-
-                    // O'chirish tugmasi
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.textContent = 'O\'chirish';
-                    deleteBtn.className = 'text-red-600 hover:text-red-900 border border-red-500 py-1 px-3 rounded-md';
-                    deleteBtn.onclick = () => deleteTeacher(doc.id, teacher.name);
-                    actionsCell.appendChild(deleteBtn);
-                });
-
-            } catch (error) {
-                console.error("Jadvalni yuklashda xatolik:", error);
-                teachersLoader.textContent = "Ma'lumotlarni yuklashda xatolik yuz berdi.";
+                console.error("Kriteriyalarni yuklashda xatolik:", error);
             }
         }
 
-        // O'qituvchini o'chirish
-        async function deleteTeacher(id, name) {
-            if (confirm(`Rostdan ham "${name}" o'qituvchini o'chirmoqchimisiz?`)) {
+        // 2. Kriteriyalarni saqlash
+        window.saveCriteria = async function() {
+            try {
+                const input = document.getElementById('criteria-input').value;
+                const newCriteria = JSON.parse(input);
+                
+                await configRef.set({ criteria: newCriteria });
+                alert("Kriteriyalar muvaffaqiyatli saqlandi!");
+                await loadCriteria();
+                await renderTeachers();
+            } catch (error) {
+                alert("Xatolik! JSON formatini tekshiring.");
+                console.error("Kriteriyalarni saqlashda xatolik:", error);
+            }
+        }
+
+        // 3. O'qituvchilarni yuklash va ro'yxatni chiqarish
+        async function renderTeachers() {
+            const listContainer = document.getElementById('teachers-admin-list');
+            listContainer.innerHTML = 'Yuklanmoqda...';
+
+            try {
+                const snapshot = await teachersRef.get();
+                listContainer.innerHTML = '';
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const totalScore = data.scores ? Object.values(data.scores).reduce((sum, score) => sum + score, 0) : 0;
+                    
+                    // Jarima ballarini hisoblash
+                    const penaltyAmount = data.penalty ? data.penalty.amount : 0; 
+                    const finalScore = totalScore - penaltyAmount;
+
+                    const teacherCard = `
+                        <div class="flex justify-between items-center p-4 bg-gray-50 border border-gray-200 rounded-md">
+                            <div class="flex-1">
+                                <span class="font-bold text-lg text-indigo-800">${data.name}</span>
+                                <p class="text-sm text-gray-600">Jami Ball: ${finalScore} (Musbat: ${totalScore}, Jarima: -${penaltyAmount})</p>
+                            </div>
+                            <div>
+                                <button onclick="openEditModal('${doc.id}')" class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-1 px-3 rounded-md transition duration-150 mr-2">Tahrirlash</button>
+                                <button onclick="deleteTeacher('${doc.id}', '${data.name}')" class="bg-red-500 hover:bg-red-600 text-white text-sm font-bold py-1 px-3 rounded-md transition duration-150">O'chirish</button>
+                            </div>
+                        </div>
+                    `;
+                    listContainer.insertAdjacentHTML('beforeend', teacherCard);
+                });
+
+            } catch (error) {
+                console.error("O'qituvchilarni yuklashda xatolik:", error);
+                listContainer.innerHTML = '<p class="text-red-500">Ma\'lumotlarni yuklashda xatolik.</p>';
+            }
+        }
+
+        // 4. Tahrirlash modalini ochish
+        window.openEditModal = async function(teacherId) {
+            const modal = document.getElementById('edit-modal');
+            const scoreInputsContainer = document.getElementById('score-inputs');
+            scoreInputsContainer.innerHTML = '';
+            
+            document.getElementById('edit-teacher-id').value = teacherId || '';
+            document.getElementById('edit-name').value = '';
+            document.getElementById('penalty-amount').value = 0; // Jarimani tozalash
+            document.getElementById('penalty-reason').value = ''; // Jarima sababini tozalash
+
+            const isNew = !teacherId;
+            document.getElementById('modal-title').textContent = isNew ? "Yangi O'qituvchi Qo'shish" : "O'qituvchini tahrirlash";
+
+            let teacherData = { scores: {}, penalty: {} };
+
+            if (!isNew) {
+                const doc = await teachersRef.doc(teacherId).get();
+                if (doc.exists) {
+                    teacherData = doc.data();
+                    document.getElementById('edit-name').value = teacherData.name;
+                    document.getElementById('penalty-amount').value = teacherData.penalty ? teacherData.penalty.amount : 0;
+                    document.getElementById('penalty-reason').value = teacherData.penalty ? teacherData.penalty.reason : '';
+                }
+            }
+
+            // Kriteriyalar asosida input maydonlarini yaratish
+            for (const key in currentCriteria) {
+                const maxScore = currentCriteria[key];
+                const currentScore = teacherData.scores ? (teacherData.scores[key] || 0) : 0;
+                
+                const inputHTML = `
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700" for="score-${key}">${key} (Maks. ${maxScore} ball)</label>
+                        <input type="number" id="score-${key}" class="w-full px-3 py-2 border border-gray-300 rounded-md" value="${currentScore}" min="0" max="${maxScore}">
+                    </div>
+                `;
+                scoreInputsContainer.insertAdjacentHTML('beforeend', inputHTML);
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        // 5. Tahrirlash modalini yopish
+        window.closeEditModal = function() {
+            document.getElementById('edit-modal').style.display = 'none';
+        }
+
+        // 6. O'qituvchi ma'lumotlarini saqlash
+        window.saveTeacher = async function() {
+            const teacherId = document.getElementById('edit-teacher-id').value || db.collection('teachers').doc().id;
+            const name = document.getElementById('edit-name').value.trim();
+            const newScores = {};
+            
+            // Jarima ma'lumotlarini olish
+            const penaltyAmount = parseInt(document.getElementById('penalty-amount').value) || 0;
+            const penaltyReason = document.getElementById('penalty-reason').value.trim();
+
+            if (!name) {
+                alert("Iltimos, o'qituvchi F.I.Sh ni kiriting.");
+                return;
+            }
+
+            // Ballarni yig'ish
+            for (const key in currentCriteria) {
+                const maxScore = currentCriteria[key];
+                const inputElement = document.getElementById(`score-${key}`);
+                let score = parseInt(inputElement.value) || 0;
+                
+                // Maksimal balldan oshmasligini tekshirish
+                score = Math.min(maxScore, score);
+                newScores[key] = score;
+            }
+
+            const data = {
+                name: name,
+                scores: newScores,
+                scoreCriteria: currentCriteria,
+                // Jarima ma'lumotlarini saqlash
+                penalty: {
+                    amount: penaltyAmount,
+                    reason: penaltyReason
+                }
+            };
+
+            try {
+                await teachersRef.doc(teacherId).set(data, { merge: true });
+                alert("Ma'lumotlar muvaffaqiyatli saqlandi!");
+                closeEditModal();
+                await renderTeachers();
+            } catch (error) {
+                console.error("Ma'lumotlarni saqlashda xatolik:", error);
+                alert("Ma'lumotlarni saqlashda xatolik yuz berdi.");
+            }
+        }
+
+        // 7. O'qituvchini o'chirish
+        window.deleteTeacher = async function(id, name) {
+            if (confirm(`Rostdan ham ${name} ni o'chirishni istaysizmi?`)) {
                 try {
                     await teachersRef.doc(id).delete();
-                    alert(`O'qituvchi "${name}" muvaffaqiyatli o'chirildi.`);
-                    renderTeachersTable();
+                    alert("O'qituvchi o'chirildi.");
+                    await renderTeachers();
                 } catch (error) {
                     console.error("O'chirishda xatolik:", error);
                     alert("O'chirishda xatolik yuz berdi.");
                 }
             }
         }
-        
-        // ----------------------------------------------------
-        // ** 4. Ballarni Tahrirlash (Modal) **
-        // ----------------------------------------------------
 
-        // Modalni ochish va ma'lumotlarni yuklash
-        function openEditModal(id, teacher) {
-            currentTeacherId = id;
-            modalTeacherName.textContent = teacher.name;
-            scoreFields.innerHTML = '';
-            
-            const currentScores = teacher.scores || {};
-            const criteria = teacher.scoreCriteria || {};
-            
-            // Ball qismlarini yaratish
-            Object.keys(criteria).forEach(key => {
-                const maxScore = criteria[key];
-                const currentScore = currentScores[key] || 0;
-                
-                const fieldDiv = document.createElement('div');
-                fieldDiv.className = 'flex justify-between items-center';
-                fieldDiv.innerHTML = `
-                    <label for="score-${key}" class="text-gray-700">${key} (Max: ${maxScore} ball):</label>
-                    <input type="number" id="score-${key}" name="${key}" value="${currentScore}" min="0" max="${maxScore}" required 
-                           class="w-24 px-3 py-2 border border-gray-300 rounded-md text-right focus:ring-green-500 focus:border-green-500">
-                `;
-                scoreFields.appendChild(fieldDiv);
-            });
-            
-            // Agar sabablar bo'lsa, ko'rsatish
-            const cutReasonInput = document.getElementById('cut-reason');
-            cutReasonInput.value = '';
-
-            if (teacher.cutReasons && teacher.cutReasons.length > 0) {
-                 const lastReason = teacher.cutReasons[teacher.cutReasons.length - 1];
-                 cutReasonInput.placeholder = `Oldingi sabab: ${lastReason.reason} (${lastReason.date})`;
-            }
-
-
-            editModal.classList.remove('hidden');
-        }
-
-        // Modalni yopish
-        closeModalBtn.addEventListener('click', () => {
-            editModal.classList.add('hidden');
-            currentTeacherId = null;
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadCriteria();
+            await renderTeachers();
         });
-
-        // Ballarni saqlash
-        editScoresForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (!currentTeacherId) return;
-
-            const newScores = {};
-            const inputs = scoreFields.querySelectorAll('input[type="number"]');
-            let totalScore = 0;
-            inputs.forEach(input => {
-                const score = parseInt(input.value);
-                newScores[input.name] = score;
-                totalScore += score;
-            });
-            
-            const cutReason = document.getElementById('cut-reason').value.trim();
-            const teacherRef = teachersRef.doc(currentTeacherId);
-
-            try {
-                 // Hozirgi ma'lumotlarni olish
-                 const doc = await teacherRef.get();
-                 const currentTeacher = doc.data();
-                 const newCutReasons = currentTeacher.cutReasons || [];
-
-                 // Ball qirqish sababini qo'shish (agar berilgan bo'lsa)
-                 if (cutReason !== "") {
-                     newCutReasons.push({
-                         reason: cutReason,
-                         date: new Date().toLocaleString('uz-UZ'),
-                         admin: auth.currentUser.email 
-                     });
-                 }
-
-
-                // Firestore'da ballarni yangilash
-                await teacherRef.update({
-                    scores: newScores,
-                    cutReasons: newCutReasons
-                });
-
-                alert(`O'qituvchi ballari muvaffaqiyatli yangilandi. Jami: ${totalScore}`);
-                editModal.classList.add('hidden');
-                renderTeachersTable(); // Jadvalni yangilash
-            } catch (error) {
-                console.error("Ballarni yangilashda xatolik:", error);
-                alert("Ballarni yangilashda xatolik yuz berdi: " + error.message);
-            }
-        });
-
     </script>
 </body>
 </html>
