@@ -3,83 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Texnikum O'qituvchilar Reytingi</title>
+    <title>O'qituvchilar Reytingi</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     
     <style>
-        /* Status Badge uchun ranglar */
-        .bg-excellent { background-color: #10b981; } /* Yashil */
-        .bg-good { background-color: #f59e0b; } /* Sariq/To'q sariq */
-        .bg-poor { background-color: #ef4444; } /* Qizil */
-
-        /* Yangi: Kattalashuvchi Kartochka uchun CSS */
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 2rem;
-            transition: all 0.5s ease-in-out;
-        }
-
+        /* Umumiy Shrift */
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* O'qituvchi kartochkasi uslubi (Minimalist, kuchli soya) */
         .teacher-card {
-            transition: all 0.5s ease-in-out;
             cursor: pointer;
-            z-index: 10;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border-top: 5px solid transparent; /* Ballga qarab ranglanadi */
+        }
+        .teacher-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
         }
 
-        /* Kartochka Kattalashganda */
-        .teacher-card.expanded {
-            grid-column: 1 / -1; /* To'liq kenglikni egallash */
-            position: relative;
-            z-index: 50; /* Eng ustda turishi */
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); /* Kattaroq soya */
-            max-height: none !important; 
+        /* Ball ko'rsatkich chizig'i */
+        .score-bar-bg {
+            background-color: #e5e7eb;
+            border-radius: 9999px;
+            height: 8px;
+        }
+        .score-bar {
+            height: 8px;
+            border-radius: 9999px;
+            transition: width 0.5s ease-out;
+        }
+        
+        /* Modal uslubi */
+        .modal {
+            background-color: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+            z-index: 50;
+        }
+        .modal-content {
+            max-height: 95vh;
+            overflow-y: auto;
+            border-radius: 1rem;
+            animation: fadeInScale 0.3s ease-out;
         }
 
-        /* YASHIRIN KONKENT: Kattalashganida ko'rsatiladi */
-        .details-content {
-            max-height: 0;
+        /* Animatsiya */
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Accordion uslubi */
+        .accordion-header {
+            cursor: pointer;
+        }
+        .accordion-content {
             overflow: hidden;
-            opacity: 0;
-            transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+            transition: max-height 0.4s ease-in-out;
         }
-
-        .teacher-card.expanded .details-content {
-            max-height: 2000px; /* Kattalashganda ko'rsatish */
-            opacity: 1;
-        }
+        .rotated { transform: rotate(90deg); }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-50 text-gray-900">
 
-    <header class="bg-white shadow-lg sticky top-0 z-20">
-        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-            <h1 class="text-2xl font-extrabold text-indigo-800 tracking-wider">🌟 O'qituvchilar Reytingi</h1>
-            <nav class="flex space-x-4 items-center">
-                <a href="charts.html" class="text-sm font-semibold text-purple-700 hover:text-purple-900 px-4 py-2 rounded-full transition duration-200 bg-purple-100 hover:bg-purple-200 shadow-sm">📊 Global Diagramma</a>
-                <a href="admin.html" class="text-sm font-semibold text-gray-600 hover:text-gray-800 px-4 py-2 rounded-full transition duration-200 border border-gray-300">Admin Panel</a>
-            </nav>
+    <header class="bg-white shadow-md sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto py-5 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            
+            <h1 class="text-xl font-extrabold text-gray-900 tracking-tight flex flex-col sm:flex-row sm:items-center">
+                Urganch Raqamli Texnologiyalar Texnikumi
+            </h1>
+            
+            <div class="flex items-center space-x-4">
+                 <a href="charts.html" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 px-4 py-2 rounded-lg transition duration-200 border border-indigo-300 hover:border-indigo-500 bg-indigo-50">
+                    📈 Grafika
+                </a>
+                <a href="admin.html" class="text-sm font-medium text-gray-700 hover:text-indigo-600 px-4 py-2 rounded-lg transition duration-200 border border-gray-300 hover:border-indigo-500">
+                    🔒 Admin Panel
+                </a>
+            </div>
+            
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
-        <div class="px-4 py-6 sm:px-0">
-            
-            <h2 class="text-3xl font-extrabold text-gray-900 mb-10 text-center">⭐ Umumiy Reyting Jadvallari (100% foizda)</h2>
-
-            <div id="loader" class="text-center py-20">
-                <p class="text-2xl font-medium text-indigo-500 animate-pulse">Ma'lumotlar yuklanmoqda...</p>
+    <main class="max-w-7xl mx-auto py-10 sm:px-6 lg:px-8">
+        <p class="text-lg font-semibold text-center mb-10 text-gray-600">
+            O'qituvchilar faoliyati reytingi. Maksimal umumiy ball: <span class="font-bold text-indigo-700">800</span>
+        </p>
+        
+        <div id="teachers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <div id="loader" class="col-span-full text-center py-20">
+                <p class="text-2xl text-indigo-600 font-medium animate-pulse">Yuklanmoqda...</p>
             </div>
-
-            <div id="teachers-list" class="grid-container">
-                </div>
         </div>
+
+        <p id="error-message" class="text-red-600 text-center text-xl font-medium mt-12 hidden">
+            Xatolik: Ma'lumotlarni yuklab bo'lmadi.
+        </p>
     </main>
 
+    <div id="teacher-modal" class="fixed inset-0 hidden items-center justify-center modal">
+        <div class="bg-white shadow-2xl w-full max-w-5xl mx-4 modal-content">
+            <div class="p-6 border-b flex justify-between items-center sticky top-0 bg-white rounded-t-xl z-10">
+                <h2 id="modal-fio" class="text-3xl font-bold text-gray-900">...</h2>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-900 text-3xl font-light leading-none transition">&times;</button>
+            </div>
+            
+            <div class="p-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    
+                    <div class="bg-indigo-100 p-5 rounded-xl border border-indigo-300">
+                        <p class="text-lg font-medium text-indigo-800">Jami Reyting Bal:</p>
+                        <span id="modal-final-score" class="text-4xl font-extrabold text-indigo-900">0 / 800</span>
+                    </div>
+
+                    <div class="bg-green-100 p-5 rounded-xl border border-green-300">
+                        <p class="text-lg font-medium text-green-800">Foiz Ko'rsatkichi:</p>
+                        <span id="modal-final-percentage" class="text-4xl font-extrabold text-green-700">0%</span>
+                    </div>
+
+                    <div id="modal-status-box" class="p-5 rounded-xl border">
+                        <p class="text-lg font-medium text-gray-800">Holat:</p>
+                        <span id="modal-status-text" class="text-4xl font-extrabold"></span>
+                    </div>
+
+                </div>
+
+                <h3 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Ball Tafsilotlari:</h3>
+                
+                <div id="criteria-details-container" class="space-y-4">
+                    </div>
+
+                <h3 class="text-2xl font-bold text-red-700 mt-10 mb-4 border-b pt-4 pb-2">❌ Jarimalar Tafsiloti:</h3>
+                <div id="penalty-details-container" class="space-y-3">
+                    </div>
+            </div>
+        </div>
+    </div>
+    
     <script>
-        // *** FIREBASE KONFIGURATSIYASI ***
+        // *** FIREBASE KONFIGURATSIYASI (Sizning kalitlaringiz) ***
         const firebaseConfig = {
             apiKey: "AIzaSyBoeZhwbVlnO7ua92G1MEbkgvR56wafczo", 
             authDomain: "myrating-db64e.firebaseapp.com",
@@ -89,210 +155,371 @@
             appId: "1:544027915154:web:9ea438a621ea6f0832074b"
         };
         
-        firebase.initializeApp(firebaseConfig);
+        // Agar Firebase allaqachon initsializatsiya qilingan bo'lsa, xato bermasligi uchun tekshiramiz
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const db = firebase.firestore();
+        const configRef = db.collection('config').doc('criteria'); 
         const teachersRef = db.collection('teachers');
 
-        const MAX_SCORE = 798;
+        // Global o'zgaruvchilar
+        let mainCriteria = {}; 
+        let subCriteria = {};  
+        let penaltyCriteria = {}; 
+        let teachersData = []; 
         
-        /**
-         * Umumiy ball (foizda) asosida status va rangni aniqlaydi (56-85% oraliq)
-         */
-        function getScoreStatus(totalScore) {
-            const percentage = (totalScore / MAX_SCORE) * 100; 
+        const MAX_SCORE = 800; // Maksimal ball
 
-            let status;
-            let chartColor;
-            let statusColorClass;
+        // --- HOLATNI ANQLASH FUNKSIYASI (YANGILANGAN) ---
+        function getStatus(score) {
+            const percentage = (score / MAX_SCORE) * 100;
 
             if (percentage >= 86) {
-                status = "A'lo";
-                chartColor = '#10b981'; // Yashil
-                statusColorClass = 'bg-excellent';
+                // 86% - 100%
+                return { text: "A'lo", color: "text-green-700", bg: "bg-green-100", border: "border-green-400" };
             } else if (percentage >= 56) {
-                status = 'Yaxshi';
-                chartColor = '#f59e0b'; // Sariq/To'q sariq
-                statusColorClass = 'bg-good';
+                // 56% - 85%
+                return { text: "Yaxshi", color: "text-blue-700", bg: "bg-blue-100", border: "border-blue-400" };
             } else {
-                status = 'Qoniqarsiz';
-                chartColor = '#ef4444'; // Qizil
-                statusColorClass = 'bg-poor';
+                // 55% va undan past
+                return { text: "Qoniqarsiz", color: "text-red-700", bg: "bg-red-100", border: "border-red-400" };
             }
-
-            return { status, chartColor, percentage, statusColorClass };
         }
         
-        // 🔥 YANGI FUNKSIYA: Kartochkani kattalashtirish
-        window.toggleDetails = function(cardElement, teacherData) {
-            const isExpanded = cardElement.classList.contains('expanded');
-            
-            // Avval barcha ochilgan kartochkalarni yopamiz
-            document.querySelectorAll('.teacher-card.expanded').forEach(card => {
-                card.classList.remove('expanded');
-                // Yopilayotgan kartochkaning ichidagi dinamik kontentni o'chiramiz
-                const detailDiv = card.querySelector('.details-content');
-                if (detailDiv) {
-                    detailDiv.innerHTML = '';
-                }
-            });
-
-            // Agar u yopiq bo'lsa, uni ochamiz
-            if (!isExpanded) {
-                cardElement.classList.add('expanded');
-                // Faqat ochilayotgan kartochkaga tafsilotlarni yuklaymiz
-                loadDetails(cardElement, teacherData);
-            }
-        };
-
-        // 🔥 YANGI FUNKSIYA: Tafsilotlarni kartochka ichiga yuklash
-        function loadDetails(cardElement, teacherData) {
-            const detailDiv = cardElement.querySelector('.details-content');
-            if (!detailDiv) return;
-
-            // 1. Kriteriyalar bo'yicha ballar ro'yxatini yaratish
-            let scoresListHTML = `
-                <div class="space-y-2 mt-4 pt-4 border-t border-gray-200">
-                    <h4 class="text-lg font-bold text-gray-800 mb-3 border-b pb-2">Kriteriyalar bo'yicha to'plangan ballar: <span class="text-sm font-normal text-gray-500">(${MAX_SCORE} ball)</span></h4>
-                    <ul class="list-none space-y-2">
-            `;
-            
-            const criteria = teacherData.scoreCriteria || {};
-            const scoreData = teacherData.scores || {};
-            
-            Object.keys(criteria).forEach(key => {
-                const maxScore = criteria[key];
-                const currentScore = scoreData[key] || 0;
-                
-                const percentage = (currentScore / maxScore) * 100;
-                const bgColor = percentage >= 85 ? 'bg-green-100' : percentage >= 55 ? 'bg-yellow-100' : 'bg-red-100';
-
-                scoresListHTML += `
-                    <li class="flex justify-between items-center text-sm font-medium py-3 px-4 rounded-xl ${bgColor} border-l-4 border-gray-300 shadow-sm">
-                        <span class="text-gray-800 font-semibold">${key}</span>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xl font-bold text-gray-900">${currentScore}</span>
-                            <span class="text-base text-gray-600"> / ${maxScore} ball</span>
-                        </div>
-                    </li>
-                `;
-            });
-
-            scoresListHTML += `</ul></div>`;
-            
-            // 2. Jarima ballarini qo'shish
-            let penaltyHTML = '';
-            if (teacherData.penaltyAmount > 0) {
-                penaltyHTML = `
-                    <div class="mt-6 border-t pt-4 border-red-200">
-                        <h4 class="text-xl font-bold text-red-700 mb-2">❌ Jarima Ballari</h4>
-                        <div class="flex justify-between items-center bg-red-50 p-3 rounded-md shadow-md">
-                            <p class="font-semibold text-red-600">Qirqilgan Ball:</p>
-                            <p class="text-xl font-bold text-red-600">-${teacherData.penaltyAmount} ball</p>
-                        </div>
-                        ${teacherData.penaltyReason ? `
-                            <p class="mt-2 text-sm text-gray-700 font-medium italic">Sababi: ${teacherData.penaltyReason}</p>
-                        ` : ''}
-                    </div>
-                `;
-            }
-
-            // Kontentni div ichiga joylash
-            detailDiv.innerHTML = scoresListHTML + penaltyHTML;
-        }
-
-        async function renderTeachers() {
-            const listContainer = document.getElementById('teachers-list');
+        // --- MA'LUMOTLARNI YUKLASH ---
+        async function loadData() {
             const loader = document.getElementById('loader');
-            listContainer.innerHTML = '';
+            const errorMessage = document.getElementById('error-message');
             loader.style.display = 'block';
+            errorMessage.classList.add('hidden');
 
             try {
-                const snapshot = await teachersRef.get();
-                const teachers = [];
+                // 1. Kriteriyalarni yuklash
+                const criteriaDoc = await configRef.get();
+                if (criteriaDoc.exists) {
+                    const data = criteriaDoc.data();
+                    mainCriteria = data.mainCriteria || {};
+                    subCriteria = data.subCriteria || {};
+                    penaltyCriteria = data.penaltyCriteria || {}; 
+                }
 
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    let totalScore = 0;
-                    
-                    if (data.scores) {
-                        totalScore = Object.values(data.scores).reduce((sum, score) => sum + score, 0);
-                    }
-                    
-                    const penaltyAmount = data.penalty ? data.penalty.amount : 0; 
-                    const penaltyReason = data.penalty ? data.penalty.reason : '';
-                    const finalScore = totalScore - penaltyAmount; 
-                    
-                    const normalizedScore = Math.min(MAX_SCORE, Math.max(0, finalScore));
+                // 2. O'qituvchilarni yuklash
+                const teachersSnapshot = await teachersRef.get();
+                teachersData = teachersSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
 
-                    const { status: currentStatus, chartColor, percentage: totalScorePercentage, statusColorClass } = getScoreStatus(normalizedScore);
-
-                    teachers.push({ 
-                        id: doc.id, 
-                        totalScore: normalizedScore, 
-                        totalScorePercentage: totalScorePercentage,
-                        penaltyAmount: penaltyAmount, 
-                        penaltyReason: penaltyReason,
-                        currentStatus: currentStatus,
-                        chartColor: chartColor,
-                        statusColorClass: statusColorClass,
-                        scoreCriteria: data.scoreCriteria || {} , // Kriteriyani qo'shamiz
-                        scores: data.scores || {}
-                    });
-                });
-
-                teachers.sort((a, b) => b.totalScorePercentage - a.totalScorePercentage); 
-
-                teachers.forEach((teacher, index) => {
-                    // teacher o'zgaruvchisidan DOM elementini topish uchun yordamchi id beramiz
-                    const cardId = `teacher-card-${teacher.id}`;
-                    
-                    const cardHTML = `
-                        <div id="${cardId}" class="teacher-card rounded-xl border-t-4 ${teacher.statusColorClass.replace('bg-', 'border-')} border-opacity-70 shadow-lg bg-white" 
-                             onclick="toggleDetails(this, ${JSON.stringify(teacher).replace(/"/g, '&quot;').replace(/'/g, '&#39;')})"> 
-                            <div class="p-5">
-                                
-                                <div class="flex justify-between items-start mb-3">
-                                    <span class="inline-block px-3 py-1 text-xs font-bold rounded-full ${teacher.statusColorClass} text-white shadow-md">${teacher.currentStatus}</span>
-                                    <span class="text-xl font-extrabold text-indigo-400">${index + 1}.</span>
-                                </div>
-
-                                <h3 class="text-xl font-bold text-gray-900 mb-2">${teacher.name}</h3>
-                                
-                                <p class="text-lg font-medium text-gray-600 mb-1">To'plangan Foiz:</p>
-                                <p class="text-4xl font-black mb-4" style="color: ${teacher.chartColor};">
-                                    ${teacher.totalScorePercentage.toFixed(1)}% 
-                                </p>
-                                
-                                <div class="w-full h-2 bg-gray-200 rounded-full mb-2">
-                                    <div class="h-full rounded-full transition-all duration-700 shadow-md" style="width: ${teacher.totalScorePercentage}%; background-color: ${teacher.chartColor};"></div>
-                                </div>
-                                
-                                ${teacher.penaltyAmount > 0 ? `
-                                    <div class="text-sm font-medium text-red-600 mt-3 p-1 bg-red-100 rounded text-center border border-red-300">
-                                        ❌ Jarima Balli: -${teacher.penaltyAmount} ball
-                                    </div>
-                                ` : ''}
-
-                                <p class="text-xs text-gray-500 mt-2 text-center font-medium hover:text-indigo-600 cursor-pointer">Batafsil ma'lumotni ko'rish/yopish uchun bosing</p>
-                                
-                                <div class="details-content mt-4">
-                                    </div>
-                                
-                            </div>
-                        </div>
-                    `;
-                    listContainer.insertAdjacentHTML('beforeend', cardHTML);
-                });
-
+                renderTeachers();
             } catch (error) {
                 console.error("Ma'lumotlarni yuklashda xatolik:", error);
-                listContainer.innerHTML = '<p class="text-red-500 text-center text-xl py-10">Ma\'lumotlarni yuklashda xatolik yuz berdi.</p>';
+                errorMessage.classList.remove('hidden');
+                errorMessage.textContent = `Xatolik: Ma'lumotlarni yuklab bo'lmadi. (Firebase Rulesni tekshiring) - ${error.message}`;
             } finally {
                 loader.style.display = 'none';
             }
         }
+        
+        // --- BALLARNI HISOBLASH ---
+        function calculateFinalScore(teacher) {
+            // totalScore admin panelida subScores yig'indisi bo'lib saqlanadi
+            const rawScore = teacher.totalScore || 0; 
+            const penalties = teacher.penalties || {};
+            let totalPenaltyAmount = 0;
 
-        document.addEventListener('DOMContentLoaded', renderTeachers);
+            Object.keys(penalties).forEach(key => {
+                const count = penalties[key] || 0; 
+                const score = penaltyCriteria[key] || 0;
+                totalPenaltyAmount += score * count;
+            });
+
+            const finalScore = rawScore - totalPenaltyAmount;
+            const finalPercentage = MAX_SCORE > 0 ? (Math.max(0, finalScore) / MAX_SCORE) * 100 : 0; 
+
+            return {
+                rawScore,
+                totalPenaltyAmount,
+                finalScore: Math.max(0, finalScore),
+                finalPercentage: finalPercentage.toFixed(1)
+            };
+        }
+
+        // --- O'QITUVCHILAR KARTASINI RENDER QILISH ---
+        function renderTeachers() {
+            const grid = document.getElementById('teachers-grid');
+            grid.innerHTML = '';
+            
+            // 1. Ball bo'yicha kamayish tartibida saralash (Eng yuqori balldan boshlab)
+            const sortedTeachers = teachersData.map(teacher => {
+                return {
+                    ...teacher,
+                    scores: calculateFinalScore(teacher)
+                };
+            }).sort((a, b) => b.scores.finalScore - a.scores.finalScore);
+
+            sortedTeachers.forEach((teacher, index) => {
+                const { finalScore, finalPercentage, totalPenaltyAmount } = teacher.scores;
+                const rank = index + 1;
+                const status = getStatus(finalScore);
+                
+                let rankColor = 'bg-gray-400';
+                if (rank === 1) rankColor = 'bg-yellow-500';
+                else if (rank === 2) rankColor = 'bg-gray-400';
+                else if (rank === 3) rankColor = 'bg-amber-600';
+                
+                // undefined FIO muammosini hal qilish uchun tekshiruv
+                const teacherName = teacher.fio || teacher.name || 'Nomi Topilmadi'; 
+                const percentageWidth = `${Math.min(finalPercentage, 100)}%`;
+
+
+                const cardHtml = `
+                    <div class="teacher-card bg-white p-6 rounded-xl shadow-xl relative ${status.border.replace('border-', 'border-t-')}">
+                        
+                        <div class="flex items-start justify-between">
+                            <h3 class="text-xl font-bold text-gray-900 leading-snug">${teacherName}</h3>
+                            <div class="ml-4 text-center">
+                                <span class="block text-2xl font-black ${rankColor} text-white w-10 h-10 rounded-full flex items-center justify-center">${rank}</span>
+                                <p class="text-xs text-gray-500 mt-1">O'rin</p>
+                            </div>
+                        </div>
+
+                        <div class="my-4 pt-3 border-t border-gray-100">
+                            <div class="flex justify-between items-end">
+                                <span class="text-2xl font-extrabold ${status.color}">${finalScore}</span>
+                                <span class="text-xl font-bold text-gray-600">${finalPercentage}%</span>
+                            </div>
+                            <p class="text-sm font-medium text-gray-500">Umumiy Ball (Max ${MAX_SCORE})</p>
+                            
+                            <div class="score-bar-bg mt-2">
+                                <div class="score-bar ${status.bg.replace('-100', '-500')}" style="width: ${percentageWidth};"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center text-sm mt-3">
+                            <span class="font-bold py-1 px-3 rounded-full ${status.bg} ${status.color} border ${status.border}">
+                                ${status.text}
+                            </span>
+                            
+                            ${totalPenaltyAmount > 0 ? 
+                                `<span class="text-red-500 font-bold">Jarima: -${totalPenaltyAmount}</span>` : 
+                                ''}
+                        </div>
+                        
+                        <a href="#" onclick="event.preventDefault(); openModal('${teacher.id}')" class="absolute inset-0"></a>
+                    </div>
+                `;
+                grid.insertAdjacentHTML('beforeend', cardHtml);
+            });
+        }
+
+        // --- MODAL FUNKSIYALARI ---
+
+        window.openModal = function(teacherId) {
+            const teacher = teachersData.find(t => t.id === teacherId);
+            if (!teacher) return;
+            
+            const scores = calculateFinalScore(teacher);
+            const modal = document.getElementById('teacher-modal');
+            const status = getStatus(scores.finalScore);
+            
+            document.getElementById('modal-fio').textContent = teacher.fio || teacher.name || 'Nomi Topilmadi';
+            document.getElementById('modal-final-score').textContent = `${scores.finalScore} / ${MAX_SCORE}`;
+            document.getElementById('modal-final-percentage').textContent = `${scores.finalPercentage}%`;
+            
+            // Modal statusini yangilash
+            const statusBox = document.getElementById('modal-status-box');
+            const statusText = document.getElementById('modal-status-text');
+            
+            statusBox.className = `p-5 rounded-xl border ${status.border} ${status.bg}`;
+            statusText.className = `text-4xl font-extrabold ${status.color}`;
+            statusText.textContent = status.text;
+
+            renderCriteriaDetails(teacher);
+            renderPenaltyDetails(teacher);
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        window.closeModal = function() {
+            const modal = document.getElementById('teacher-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+        
+        // Modal tashqarisiga bosilganda yopish
+        document.getElementById('teacher-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'teacher-modal') {
+                closeModal();
+            }
+        });
+        
+        // --- MODAL ICHIDAGI KRITERIYALARNI RENDER QILISH (Tartiblangan mantiq saqlangan) ---
+        
+        function renderCriteriaDetails(teacher) {
+            const container = document.getElementById('criteria-details-container');
+            container.innerHTML = '';
+            const existingMainScores = teacher.mainScores || {};
+            const existingSubScores = teacher.subScores || {};
+            
+            let html = '';
+            
+            // Asosiy Kriteriyalarni Raqam Bo'yicha Saralash
+            const sortedMainKeys = Object.keys(mainCriteria).sort((a, b) => {
+                const numA = parseFloat(a.split('.')[0]) || 0; // Float ishlatildi, shuning uchun '1.1' ham to'g'ri saralanadi
+                const numB = parseFloat(b.split('.')[0]) || 0;
+                return numA - numB;
+            });
+            
+
+            sortedMainKeys.forEach((mainKey, index) => {
+                const mainMaxScore = mainCriteria[mainKey] || 0;
+                const mainTakenScore = existingMainScores[mainKey] || 0;
+                const subCategories = subCriteria[mainKey];
+                const contentId = `acc-content-${teacher.id}-${index}`;
+                
+                // Ball foizi
+                const mainPercentage = mainMaxScore > 0 ? (mainTakenScore / mainMaxScore) * 100 : 0;
+                const mainBarColor = mainPercentage >= 70 ? 'bg-indigo-500' : (mainPercentage >= 50 ? 'bg-yellow-500' : 'bg-red-500');
+
+                // Accordion Header
+                html += `
+                    <div class="accordion-item border border-gray-300 rounded-lg overflow-hidden transition-shadow duration-300 hover:shadow-md">
+                        <div class="accordion-header flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100" onclick="toggleAccordion('${contentId}', 'arrow-${index}')">
+                            <h4 class="text-base font-semibold text-gray-800 w-3/5">${mainKey}</h4>
+                            <div class="text-right flex items-center space-x-4">
+                                <div class="w-24 text-center">
+                                    <span class="font-bold text-sm ${mainPercentage >= 70 ? 'text-indigo-600' : 'text-red-600'}">${mainTakenScore} / ${mainMaxScore}</span>
+                                    <div class="score-bar-bg mt-1">
+                                        <div class="score-bar ${mainBarColor}" style="width: ${Math.min(mainPercentage, 100)}%;"></div>
+                                    </div>
+                                </div>
+                                <span id="arrow-${index}" class="text-xl font-bold text-gray-500 transition duration-300">▶</span>
+                            </div>
+                        </div>
+                        
+                        <div id="${contentId}" class="accordion-content max-h-0 bg-white">
+                            <div class="p-4 space-y-2 border-t border-gray-200">
+                `;
+                
+                // Sub-Criteria details
+                if (subCategories && Object.keys(subCategories).length > 0) {
+                     // Sub-Kriteriyalarni Raqam Bo'yicha Saralash
+                    const sortedSubKeys = Object.keys(subCategories).sort((a, b) => {
+                        const numA = parseFloat(a.split('.')[0]) || 0;
+                        const numB = parseFloat(b.split('.')[0]) || 0;
+                        return numA - numB;
+                    });
+
+                    sortedSubKeys.forEach(subKey => {
+                        const subMaxScore = subCategories[subKey] || 0;
+                        const subTakenScore = existingSubScores[subKey] || 0;
+                        const subBarColor = (subTakenScore / subMaxScore) * 100 >= 70 ? 'bg-green-500' : 'bg-orange-500';
+                        
+                        html += `
+                            <div class="flex justify-between items-center text-sm border-b border-dashed pb-2">
+                                <span class="w-3/5 text-gray-700 pl-4">${subKey}</span>
+                                <div class="w-24 text-center">
+                                    <span class="font-medium text-right">${subTakenScore} / ${subMaxScore}</span>
+                                    <div class="score-bar-bg mt-1 h-2">
+                                        <div class="score-bar ${subBarColor} h-2" style="width: ${Math.min((subTakenScore / subMaxScore) * 100, 100)}%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += '<p class="text-sm text-gray-500 pl-4 py-2">Batafsil bandlar kiritilmagan.</p>';
+                }
+
+                html += `
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // --- MODAL ICHIDAGI JARIMALARNI RENDER QILISH (Tartiblangan mantiq saqlangan) ---
+        function renderPenaltyDetails(teacher) {
+            const container = document.getElementById('penalty-details-container');
+            const penalties = teacher.penalties || {};
+            let html = '';
+            let hasPenalty = false;
+
+            // Jarimalarni Raqam Bo'yicha Saralash
+             const sortedPenaltyKeys = Object.keys(penalties).sort((a, b) => {
+                const numA = parseFloat(a.split('.')[0]) || 0;
+                const numB = parseFloat(b.split('.')[0]) || 0;
+                return numA - numB;
+            });
+
+
+            sortedPenaltyKeys.forEach(key => {
+                const count = penalties[key] || 0; 
+                if (count > 0) {
+                    hasPenalty = true;
+                    const score = penaltyCriteria[key] || 0;
+                    const totalPenalty = score * count;
+                    
+                    html += `
+                        <div class="flex justify-between items-center bg-red-50 p-3 rounded-lg border border-red-200">
+                            <span class="font-medium text-red-800 w-3/4 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                ${key}
+                            </span>
+                            <span class="text-right text-xl font-black text-red-900">-${totalPenalty} ball</span>
+                        </div>
+                        <p class="text-xs text-red-600 pl-3 -mt-2 mb-3">
+                            ${count} marta qo'llanilgan (har bir qoida uchun: -${score} ball)
+                        </p>
+                    `;
+                }
+            });
+
+            if (!hasPenalty) {
+                html = '<p class="text-lg text-gray-500 italic py-4">Bu o\'qituvchiga jarima ballari qo\'llanilmagan.</p>';
+            }
+            container.innerHTML = html;
+        }
+
+        // --- ACCORDION TOGGLE FUNKSIYASI (O'zgarmadi) ---
+        window.toggleAccordion = function(contentId, arrowId) {
+            const content = document.getElementById(contentId);
+            const arrow = document.getElementById(arrowId);
+            
+            // Agar ochiq bo'lsa, yopish
+            if (content.style.maxHeight && content.style.maxHeight !== '0px') {
+                content.style.maxHeight = '0px';
+                arrow.classList.remove('rotated');
+            } else {
+                 // Avval barcha ochilgan accordianlarni yopish (faqat bittasi ochiq bo'lishi uchun)
+                document.querySelectorAll('.accordion-content').forEach(acc => {
+                     if (acc.id !== contentId && acc.style.maxHeight && acc.style.maxHeight !== '0px') {
+                        acc.style.maxHeight = '0px';
+                        
+                        const parentHeader = acc.previousElementSibling;
+                        if (parentHeader) {
+                            const currentArrow = parentHeader.querySelector(`span[id^="arrow"]`);
+                            if (currentArrow) {
+                                currentArrow.classList.remove('rotated');
+                            }
+                        }
+                     }
+                });
+                
+                // Joriy elementni ochish
+                content.style.maxHeight = content.scrollHeight + 'px';
+                arrow.classList.add('rotated');
+            }
+        };
+
+
+        // --- DASTURNI ISHGA TUSHIRISH ---
+        document.addEventListener('DOMContentLoaded', loadData);
     </script>
 </body>
 </html>

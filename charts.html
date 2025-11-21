@@ -7,24 +7,38 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Diagramma balandligi (ko'proq ism sig'ishi uchun) */
+        #chart-container { height: 650px; } 
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
 
     <header class="bg-white shadow-md">
         <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-purple-700">📊 Global Reyting Diagrammasi (Maks. 798 ball)</h1>
+            <h1 class="text-2xl font-bold text-indigo-700">📊 Global Reyting Diagrammasi</h1>
             <a href="index.html" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 px-3 py-1 rounded-md transition duration-150 border border-indigo-300">🏡 Asosiy Sahifa</a>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
         <div class="bg-white p-8 shadow-xl rounded-lg">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">O'qituvchilarning Umumiy Ballari (798 balldan)</h2>
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">O'qituvchilarning Umumiy Ballari (800 balldan)</h2>
+
+            <div class="flex justify-center space-x-6 text-sm font-semibold mb-8">
+                <span class="flex items-center text-green-600"><span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span> A'lo (86%+)</span>
+                <span class="flex items-center text-yellow-600"><span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span> Yaxshi (56% - 85%)</span>
+                <span class="flex items-center text-red-600"><span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span> Qoniqarsiz (0% - 55%)</span>
+            </div>
 
             <div id="loader-chart" class="text-center py-20">
-                <p class="text-xl font-medium text-purple-500">Diagramma ma'lumotlari yuklanmoqda...</p>
+                <p class="text-xl font-medium text-indigo-500 animate-pulse">Diagramma ma'lumotlari yuklanmoqda...</p>
             </div>
             
             <div class="w-full relative" id="chart-container" style="display: none;">
@@ -34,6 +48,7 @@
     </main>
 
     <script>
+        // *** FIREBASE KONFIGURATSIYASI ***
         const firebaseConfig = {
             apiKey: "AIzaSyBoeZhwbVlnO7ua92G1MEbkgvR56wafczo", 
             authDomain: "myrating-db64e.firebaseapp.com",
@@ -43,27 +58,62 @@
             appId: "1:544027915154:web:9ea438a621ea6f0832074b"
         };
         
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const db = firebase.firestore();
         const teachersRef = db.collection('teachers');
 
-        const MAX_SCORE = 798;
-        
-        // Ranglarni foiz asosida aniqlash (56-85% oraliq)
+        const MAX_SCORE = 800; 
+
+        // --- HOLATNI ANQLASH FUNKSIYASI (Sariq rang qo'shildi) ---
         function getScoreStatus(totalScore) {
             const percentage = (totalScore / MAX_SCORE) * 100;
             let chartColor;
+            let text;
 
             if (percentage >= 86) {
-                chartColor = '#10b981'; // Yashil (A'lo)
+                chartColor = '#10b981'; // Yashil (A'lo - green-500)
+                text = "A'lo";
             } else if (percentage >= 56) {
-                chartColor = '#f59e0b'; // Sariq (Yaxshi)
+                chartColor = '#f59e0b'; // SARIQ (Yaxshi - yellow-600/500)
+                text = "Yaxshi";
             } else {
-                chartColor = '#ef4444'; // Qizil (Qoniqarsiz)
+                chartColor = '#ef4444'; // Qizil (Qoniqarsiz - red-500)
+                text = "Qoniqarsiz";
             }
-            return { chartColor };
+            return { chartColor, text };
+        }
+        
+        // --- BALLARNI HISOBLASH (Jarimalarni hisobga olish) ---
+        async function calculateFinalScore(teacherData) {
+            const rawScore = teacherData.totalScore || 0; 
+            const penalties = teacherData.penalties || {};
+            let totalPenaltyAmount = 0;
+            
+            let penaltyCriteria = {};
+            try {
+                const configRef = db.collection('config').doc('criteria'); 
+                const criteriaDoc = await configRef.get();
+                if (criteriaDoc.exists) {
+                    penaltyCriteria = criteriaDoc.data().penaltyCriteria || {};
+                }
+            } catch (error) {
+                // Xatolik bo'lsa, jarima hisoblanmaydi
+            }
+
+            Object.keys(penalties).forEach(key => {
+                const count = penalties[key] || 0; 
+                const score = penaltyCriteria[key] || 0;
+                totalPenaltyAmount += score * count;
+            });
+
+            const finalScore = rawScore - totalPenaltyAmount;
+            return Math.min(MAX_SCORE, Math.max(0, finalScore));
         }
 
+
+        // --- GRAFIKNI CHIZISH ---
         async function drawGlobalChart() {
             const loader = document.getElementById('loader-chart');
             const chartContainer = document.getElementById('chart-container');
@@ -72,32 +122,22 @@
                 const snapshot = await teachersRef.get();
                 const teachers = [];
 
-                snapshot.forEach(doc => {
+                for (const doc of snapshot.docs) {
                     const data = doc.data();
-                    let totalScore = 0;
+                    const finalScore = await calculateFinalScore(data); 
                     
-                    if (data.scores) {
-                        totalScore = Object.values(data.scores).reduce((sum, score) => sum + score, 0);
-                    }
+                    teachers.push({ 
+                        totalScore: finalScore, 
+                        name: data.fio || data.name || 'Nomi Topilmadi'
+                    });
+                }
 
-                    // Jarima ballarini ayirish
-                    const penaltyAmount = data.penalty ? data.penalty.amount : 0; 
-                    const finalScore = totalScore - penaltyAmount;
-                    
-                    const normalizedScore = Math.min(MAX_SCORE, Math.max(0, finalScore));
-                    
-                    teachers.push({ totalScore: normalizedScore, name: data.name });
-                });
-
-                teachers.sort((a, b) => b.totalScore - a.totalScore);
+                teachers.sort((a, b) => b.totalScore - a.totalScore); 
                 
                 const labels = teachers.map(t => t.name);
                 const scores = teachers.map(t => t.totalScore);
-                const colors = teachers.map(t => getScoreStatus(t.totalScore).chartColor);
-
-                // Kontent ko'p bo'lsa, Canvas balandligini dinamik sozlash
-                const dynamicHeight = Math.max(500, teachers.length * 35 + 100); 
-                chartContainer.style.height = `${dynamicHeight}px`;
+                // Yangi ranglar mantiqini ishlatish
+                const colors = teachers.map(t => getScoreStatus(t.totalScore).chartColor); 
 
                 loader.style.display = 'none';
                 chartContainer.style.display = 'block';
@@ -108,27 +148,32 @@
                         labels: labels,
                         datasets: [{
                             label: `Jami Ball (${MAX_SCORE} dan)`,
-                            data: scores, 
-                            backgroundColor: colors, 
+                            data: scores,
+                            backgroundColor: colors,
                             borderWidth: 1.5,
+                            borderColor: colors.map(c => c + 'AA'), 
                             borderRadius: 6
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        indexAxis: 'y',
+                        indexAxis: 'x', 
                         scales: {
-                            x: { // Bu endi Ballarni ko'rsatadi
+                            y: {
                                 beginAtZero: true,
-                                max: 800, // Maksimal ball 798 ga moslab 800 qo'yildi
-                                title: { display: true, text: 'Olingan Ball (798 gacha)' },
-                                ticks: {
-                                    stepSize: 100 
-                                }
+                                max: MAX_SCORE, 
+                                title: { display: true, text: 'Olingan Ball (800 gacha)', font: { size: 14 } },
+                                ticks: { stepSize: 100 }
                             },
-                            y: { 
-                                title: { display: true, text: 'O\'qituvchilar Nomi' }
+                            x: {
+                                title: { display: true, text: 'O\'qituvchilar Nomi', font: { size: 14 } },
+                                ticks: {
+                                    maxRotation: 45, 
+                                    minRotation: 45,
+                                    autoSkip: false,
+                                    font: { size: 10 } 
+                                }
                             }
                         },
                         plugins: {
@@ -136,9 +181,15 @@
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
-                                        const score = context.formattedValue;
+                                        const score = context.raw;
                                         const percentage = ((score / MAX_SCORE) * 100).toFixed(1);
-                                        return `Jami Ball: ${score} / ${MAX_SCORE} (${percentage}%)`;
+                                        const status = getScoreStatus(score).text;
+
+                                        return [
+                                            `Ball: ${score} / ${MAX_SCORE}`,
+                                            `Foiz: ${percentage}%`,
+                                            `Holat: ${status}`
+                                        ];
                                     }
                                 }
                             }
@@ -149,6 +200,7 @@
             } catch (error) {
                 console.error("Global diagrammani yuklashda xatolik:", error);
                 loader.innerHTML = '<p class="text-red-500 text-center text-xl py-10">Diagramma ma\'lumotlarini yuklashda xatolik.</p>';
+                chartContainer.style.display = 'none';
             }
         }
 
